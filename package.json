@@ -1,7 +1,7 @@
 {
   "name": "@revenexx/tag-manager-nuxt",
   "version": "0.0.0",
-  "description": "Nuxt module for the revenexx Tag Manager: loads the published tag container, gates every tag through a consent provider, and maps the revenexx storefront event contract onto vendor calls \u2014 built on @nuxt/scripts.",
+  "description": "Nuxt module for the revenexx Tag Manager: loads the published tag container, gates every tag through a consent provider, and maps the revenexx theme event contract onto vendor calls \u2014 built on @nuxt/scripts.",
   "keywords": [
     "nuxt",
     "nuxt-module",
@@ -12,7 +12,7 @@
     "etracker",
     "hubspot",
     "ga4",
-    "storefront-events",
+    "theme-events",
     "revenexx"
   ],
   "homepage": "https://github.com/revenexx/tag-manager-nuxt#readme",
@@ -36,7 +36,7 @@
       "types": "./dist/events.d.mts",
       "import": "./dist/events.mjs"
     },
-    "./contract/storefront-events.schema.json": "./contract/storefront-events.schema.json",
+    "./contract/theme-events.schema.json": "./contract/theme-events.schema.json",
     "./package.json": "./package.json"
   },
   "main": "./dist/module.mjs",

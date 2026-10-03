@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.revenexx.com/storefront-events.schema.json",
-  "title": "revenexx Storefront Events",
-  "description": "The storefront event contract, version storefront-events/1. One envelope per thing that happened in a storefront — a page shown, an item added, an order placed — emitted by the theme (@revenexx/cover) and read by whoever listens: the revenexx Tag Manager in the browser today, the Analytics Studio server-side later. Event names follow GA4 because the other vendors map onto it; B2B events GA4 does not know are added. The contract carries NO personal data: every object is closed, the visitor is described by two booleans, and email, name, phone, customer number, company name, address, IP, user/contact/organization ids are forbidden by construction. Transport (non-normative here): nuxtApp.callHook('revenexx:event', envelope) for Nuxt modules and window.dispatchEvent(new CustomEvent('revenexx:event', {detail: envelope})) for theme extensions.",
+  "$id": "https://schemas.revenexx.com/theme-events.schema.json",
+  "title": "revenexx Theme Events",
+  "description": "The theme event contract, version theme-events/1. One envelope per thing that happened in a storefront — a page shown, an item added, an order placed — emitted by the theme (@revenexx/cover) and read by whoever listens: the revenexx Tag Manager in the browser today, the Analytics Studio server-side later. Event names follow GA4 because the other vendors map onto it; B2B events GA4 does not know are added. The contract carries NO personal data: every object is closed, the visitor is described by two booleans, and email, name, phone, customer number, company name, address, IP, user/contact/organization ids are forbidden by construction. Transport (non-normative here): nuxtApp.callHook('revenexx:event', envelope) for Nuxt modules and window.dispatchEvent(new CustomEvent('revenexx:event', {detail: envelope})) for theme extensions.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,7 +18,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "storefront-events/1",
+      "const": "theme-events/1",
       "description": "The contract version this envelope claims. A listener reads only versions it supports."
     },
     "event": {

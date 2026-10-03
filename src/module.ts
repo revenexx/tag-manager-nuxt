@@ -1,6 +1,6 @@
 import { addImports, addPlugin, addServerHandler, createResolver, defineNuxtModule, hasNuxtModule, useLogger } from '@nuxt/kit'
 import { defu } from 'defu'
-import type { StorefrontEventEnvelope } from './runtime/events/types'
+import type { ThemeEventEnvelope } from './runtime/events/types'
 import type { ConsentProvider } from './runtime/core/types'
 
 /**
@@ -8,7 +8,7 @@ import type { ConsentProvider } from './runtime/core/types'
  *
  * Loads the tag container the revenexx Tag Manager app published, registers
  * each marketing tag with @nuxt/scripts behind the visitor's consent, and maps
- * the storefront event contract (`revenexx:event`, storefront-events/1) onto
+ * the theme event contract (`revenexx:event`, theme-events/1) onto
  * each vendor's own calls.
  *
  *   modules: ['@nuxt/scripts', '@revenexx/consent-manager-nuxt', '@revenexx/tag-manager-nuxt']
@@ -50,7 +50,7 @@ export interface ModulePublicRuntimeConfig {
 
 declare module '#app' {
   interface RuntimeNuxtHooks {
-    'revenexx:event': (envelope: StorefrontEventEnvelope) => void | Promise<void>
+    'revenexx:event': (envelope: ThemeEventEnvelope) => void | Promise<void>
   }
   interface NuxtApp {
     $consentProvider?: ConsentProvider

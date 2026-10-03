@@ -3,7 +3,7 @@
 # @revenexx/tag-manager-nuxt
 
 **The Nuxt module for the revenexx Tag Manager.**
-Loads the tag container the Tag Manager app published, lets each marketing tag load only when the visitor's consent allows it, and turns the storefront event contract into each vendor's own calls — built on [@nuxt/scripts](https://scripts.nuxt.com).
+Loads the tag container the Tag Manager app published, lets each marketing tag load only when the visitor's consent allows it, and turns the theme event contract into each vendor's own calls — built on [@nuxt/scripts](https://scripts.nuxt.com).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -54,14 +54,14 @@ only), or reuse cover's `NUXT_REVENEXX_TENANT` / `NUXT_REVENEXX_API_KEY`.
 | `previewParam` | `rvx_tm_preview` | Query parameter that loads the unpublished draft. |
 | `debug` | `false` | Log decisions and events, as preview mode does. |
 
-## Emitting storefront events
+## Emitting theme events
 
 The contract lives at `@revenexx/tag-manager-nuxt/events` and needs no module:
 
 ```ts
-import { createStorefrontEvents } from '@revenexx/tag-manager-nuxt/events'
+import { createThemeEvents } from '@revenexx/tag-manager-nuxt/events'
 
-const events = createStorefrontEvents({
+const events = createThemeEvents({
   context: () => ({ market: 'de', locale: 'de-DE', currency: 'EUR', page: { path: route.path, type: 'product' }, customer: { authenticated, b2b } }),
   callHook: (name, envelope) => nuxtApp.callHook(name, envelope),
   validate: import.meta.dev,

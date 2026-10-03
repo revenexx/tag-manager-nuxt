@@ -1,5 +1,5 @@
 /**
- * A dependency-free validator for storefront-events/1.
+ * A dependency-free validator for theme-events/1.
  *
  * The schema is canonical; this is its executable twin for the browser, where
  * shipping a JSON-Schema engine to every visitor would cost more than the
@@ -14,10 +14,10 @@ import {
   FORBIDDEN_FIELDS,
   PAGE_TYPES,
   PUNCHOUT_PROTOCOLS,
-  STOREFRONT_EVENTS_SCHEMA,
-  STOREFRONT_EVENT_NAMES,
+  THEME_EVENTS_SCHEMA,
+  THEME_EVENT_NAMES,
 } from './vocabulary'
-import type { StorefrontEventName } from './vocabulary'
+import type { ThemeEventName } from './vocabulary'
 
 type Json = Record<string, unknown>
 
@@ -104,7 +104,7 @@ function validateItem(item: unknown, path: string, errors: string[]): void {
   if (lp !== undefined && (typeof lp !== 'number' || !Number.isInteger(lp) || lp < 1)) errors.push(`${path}.list_position: must be an integer >= 1`)
 }
 
-function validateEcommerce(e: unknown, event: StorefrontEventName, errors: string[]): void {
+function validateEcommerce(e: unknown, event: ThemeEventName, errors: string[]): void {
   const path = 'ecommerce'
   if (!isObject(e)) { errors.push(`${path}: must be an object`); return }
   closed(e, ECOMMERCE_KEYS, path, errors)
@@ -137,14 +137,14 @@ function validateEcommerce(e: unknown, event: StorefrontEventName, errors: strin
  * Validate one envelope. Returns the list of violations; empty means valid.
  * Every violation is reported, not just the first.
  */
-export function validateStorefrontEvent(envelope: unknown): string[] {
+export function validateThemeEvent(envelope: unknown): string[] {
   const errors: string[] = []
   if (!isObject(envelope)) return ['envelope: must be an object']
   closed(envelope, ENVELOPE_KEYS, 'envelope', errors)
   for (const k of ENVELOPE_REQUIRED) if (envelope[k] === undefined) errors.push(`envelope.${k}: required`)
 
-  if (envelope.schema !== undefined && envelope.schema !== STOREFRONT_EVENTS_SCHEMA) errors.push(`envelope.schema: must be '${STOREFRONT_EVENTS_SCHEMA}'`)
-  oneOf(envelope, 'event', STOREFRONT_EVENT_NAMES, 'envelope', errors, false)
+  if (envelope.schema !== undefined && envelope.schema !== THEME_EVENTS_SCHEMA) errors.push(`envelope.schema: must be '${THEME_EVENTS_SCHEMA}'`)
+  oneOf(envelope, 'event', THEME_EVENT_NAMES, 'envelope', errors, false)
   str(envelope, 'event_id', 'envelope', errors, { min: 1, max: 128 })
   str(envelope, 'occurred_at', 'envelope', errors, { re: DATE_TIME_RE })
   str(envelope, 'market', 'envelope', errors, { max: 64, re: MARKET_RE })
@@ -172,8 +172,8 @@ export function validateStorefrontEvent(envelope: unknown): string[] {
     }
   }
 
-  const event = (STOREFRONT_EVENT_NAMES as readonly string[]).includes(envelope.event as string)
-    ? envelope.event as StorefrontEventName
+  const event = (THEME_EVENT_NAMES as readonly string[]).includes(envelope.event as string)
+    ? envelope.event as ThemeEventName
     : null
 
   if (envelope.ecommerce !== undefined && event) validateEcommerce(envelope.ecommerce, event, errors)
@@ -216,7 +216,7 @@ export function validateStorefrontEvent(envelope: unknown): string[] {
 }
 
 /** Throwing variant for callers that want an exception. */
-export function assertStorefrontEvent(envelope: unknown): void {
-  const errors = validateStorefrontEvent(envelope)
-  if (errors.length) throw new TypeError(`[revenexx storefront-events] invalid envelope:\n  ${errors.join('\n  ')}`)
+export function assertThemeEvent(envelope: unknown): void {
+  const errors = validateThemeEvent(envelope)
+  if (errors.length) throw new TypeError(`[revenexx theme-events] invalid envelope:\n  ${errors.join('\n  ')}`)
 }

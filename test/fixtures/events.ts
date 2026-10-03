@@ -1,7 +1,7 @@
-import type { StorefrontEventData, StorefrontEventEnvelope, StorefrontItem } from '../../src/runtime/events/types'
-import type { StorefrontEventName } from '../../src/runtime/events/vocabulary'
+import type { ThemeEventData, ThemeEventEnvelope, ThemeEventItem } from '../../src/runtime/events/types'
+import type { ThemeEventName } from '../../src/runtime/events/vocabulary'
 
-export const ITEM: StorefrontItem = {
+export const ITEM: ThemeEventItem = {
   sku: 'LS-B16-1P',
   name: 'Leitungsschutzschalter B16 1-polig',
   brand: 'Hager',
@@ -21,7 +21,7 @@ export const CONTEXT = {
 }
 
 /** The event-specific part of one valid envelope per event in vocabulary v1. */
-export const DATA: Record<StorefrontEventName, StorefrontEventData> = {
+export const DATA: Record<ThemeEventName, ThemeEventData> = {
   page_view: { page: { path: '/', type: 'home' } },
   view_item_list: { ecommerce: { list_id: 'category:installation/schutzgeraete', list_name: 'Schutzgeräte', items: [ITEM] } },
   search: { search: { search_term: 'leitungsschutzschalter', results_count: 42 } },
@@ -43,11 +43,11 @@ export const DATA: Record<StorefrontEventName, StorefrontEventData> = {
 }
 
 let n = 0
-export function envelope<E extends StorefrontEventName>(event: E, overrides: Partial<StorefrontEventEnvelope> = {}): StorefrontEventEnvelope<E> {
+export function envelope<E extends ThemeEventName>(event: E, overrides: Partial<ThemeEventEnvelope> = {}): ThemeEventEnvelope<E> {
   n += 1
   const data = DATA[event]
   return {
-    schema: 'storefront-events/1',
+    schema: 'theme-events/1',
     event,
     event_id: event === 'purchase' ? 'ORD-000123' : `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     occurred_at: '2026-10-03T09:12:44.120Z',
@@ -62,5 +62,5 @@ export function envelope<E extends StorefrontEventName>(event: E, overrides: Par
     ...(data.auth ? { auth: data.auth } : {}),
     ...(data.punchout ? { punchout: data.punchout } : {}),
     ...overrides,
-  } as StorefrontEventEnvelope<E>
+  } as ThemeEventEnvelope<E>
 }

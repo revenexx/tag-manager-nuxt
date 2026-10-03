@@ -5,9 +5,9 @@ proves it; `spec:check` holds the two together.
 
 ## Specs
 
-- [loader.md](loader.md) — which marketing tag loads on a page, and which storefront event
+- [loader.md](loader.md) — which marketing tag loads on a page, and which theme event
   reaches it, under the visitor's consent.
-- [storefront-events.md](storefront-events.md) — the event contract itself: one envelope per
+- [theme-events.md](theme-events.md) — the event contract itself: one envelope per
   thing that happened, validated, deduplicated for orders, and free of personal data.
 
 ## What is not promised yet
@@ -26,16 +26,16 @@ proves it; `spec:check` holds the two together.
 
 - **marketing tag** — one vendor script a merchant configures, with its vendor and purpose.
   Not: *pixel*, *snippet*.
-- **envelope** — one storefront event as it travels, with its context. Not: *payload*.
+- **envelope** — one theme event as it travels, with its context. Not: *payload*.
 
 ## The surfaces, and what the product calls them
 
 | Surface | Promised in |
 | --- | --- |
 | The module in a theme | [loader.md](loader.md) |
-| The storefront event hook — `revenexx:event` | [loader.md](loader.md), [storefront-events.md](storefront-events.md) |
-| The contract — storefront-events/1 | [storefront-events.md](storefront-events.md) |
-| The emitter — `@revenexx/tag-manager-nuxt/events` | [storefront-events.md](storefront-events.md) |
+| The theme event hook — `revenexx:event` | [loader.md](loader.md), [theme-events.md](theme-events.md) |
+| The contract — theme-events/1 | [theme-events.md](theme-events.md) |
+| The emitter — `@revenexx/tag-manager-nuxt/events` | [theme-events.md](theme-events.md) |
 
 ## How this stays true
 

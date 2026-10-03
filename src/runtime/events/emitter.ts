@@ -1,5 +1,5 @@
 /**
- * `createStorefrontEvents()` — the framework-free emitter of the storefront
+ * `createThemeEvents()` — the framework-free emitter of the theme
  * event contract.
  *
  * It imports nothing from Nuxt or Vue and has no side effect at import time, so
@@ -7,28 +7,28 @@
  * Manager module: hand it `nuxtApp.callHook` and it speaks to Nuxt modules,
  * and it always dispatches the DOM event for theme extensions (ADR-0111).
  *
- *   const events = createStorefrontEvents({
+ *   const events = createThemeEvents({
  *     context: () => ({ market, locale, currency, page, customer }),
  *     callHook: (name, envelope) => nuxtApp.callHook(name, envelope),
  *     validate: import.meta.dev,
  *   })
  *   events.emit('add_to_cart', { ecommerce: { items } })
  */
-import type { StorefrontEventContext, StorefrontEventData, StorefrontEventEnvelope } from './types'
-import { validateStorefrontEvent } from './validate'
-import { STOREFRONT_EVENTS_SCHEMA, STOREFRONT_EVENT_DOM, STOREFRONT_EVENT_HOOK } from './vocabulary'
-import type { StorefrontEventName } from './vocabulary'
+import type { ThemeEventContext, ThemeEventData, ThemeEventEnvelope } from './types'
+import { validateThemeEvent } from './validate'
+import { THEME_EVENTS_SCHEMA, THEME_EVENT_DOM, THEME_EVENT_HOOK } from './vocabulary'
+import type { ThemeEventName } from './vocabulary'
 
 export interface StorageLike {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
 }
 
-export interface StorefrontEventsOptions {
+export interface ThemeEventsOptions {
   /** Read on every emit: market, locale, currency, page and the two visitor booleans. */
-  context: () => StorefrontEventContext
+  context: () => ThemeEventContext
   /** Usually `(name, e) => nuxtApp.callHook(name, e)`. Omit outside Nuxt. */
-  callHook?: (name: typeof STOREFRONT_EVENT_HOOK, envelope: StorefrontEventEnvelope) => unknown
+  callHook?: (name: typeof THEME_EVENT_HOOK, envelope: ThemeEventEnvelope) => unknown
   /** Where the DOM event is dispatched. Defaults to `window` in a browser, none on the server. */
   target?: { dispatchEvent(event: Event): boolean } | null
   /** Validate every envelope against the contract; invalid ones are not emitted. Turn on in dev. */
@@ -42,13 +42,13 @@ export interface StorefrontEventsOptions {
   logger?: Pick<Console, 'warn'>
 }
 
-export interface StorefrontEvents {
+export interface ThemeEvents {
   /**
    * Emit one event. Returns the envelope that went out, or `null` when nothing
    * was emitted (an invalid envelope in validate mode, or a purchase already
    * emitted for that transaction).
    */
-  emit<E extends StorefrontEventName>(event: E, data?: StorefrontEventData): StorefrontEventEnvelope<E> | null
+  emit<E extends ThemeEventName>(event: E, data?: ThemeEventData): ThemeEventEnvelope<E> | null
 }
 
 const PURCHASE_KEY = 'rvx_se_purchase:'
@@ -91,7 +91,7 @@ function defaultTarget(): { dispatchEvent(event: Event): boolean } | null {
  * phone number is replaced. Both are places a visitor's own typing reaches the
  * envelope, which is why they are cleaned rather than merely validated.
  */
-export function scrubStorefrontEvent<T extends StorefrontEventEnvelope>(envelope: T): T {
+export function scrubThemeEvent<T extends ThemeEventEnvelope>(envelope: T): T {
   if (envelope.page?.path) {
     envelope.page.path = envelope.page.path.split(/[?#]/)[0] || '/'
   }
@@ -102,7 +102,7 @@ export function scrubStorefrontEvent<T extends StorefrontEventEnvelope>(envelope
   return envelope
 }
 
-export function createStorefrontEvents(options: StorefrontEventsOptions): StorefrontEvents {
+export function createThemeEvents(options: ThemeEventsOptions): ThemeEvents {
   const uuid = options.uuid ?? defaultUuid
   const now = options.now ?? (() => new Date())
   const logger = options.logger ?? console
@@ -130,10 +130,10 @@ export function createStorefrontEvents(options: StorefrontEventsOptions): Storef
     }
   }
 
-  function emit<E extends StorefrontEventName>(event: E, data: StorefrontEventData = {}): StorefrontEventEnvelope<E> | null {
+  function emit<E extends ThemeEventName>(event: E, data: ThemeEventData = {}): ThemeEventEnvelope<E> | null {
     const ctx = options.context()
     const envelope = {
-      schema: STOREFRONT_EVENTS_SCHEMA,
+      schema: THEME_EVENTS_SCHEMA,
       event,
       event_id: uuid(),
       occurred_at: now().toISOString(),
@@ -147,7 +147,7 @@ export function createStorefrontEvents(options: StorefrontEventsOptions): Storef
       ...(data.form ? { form: data.form } : {}),
       ...(data.auth ? { auth: data.auth } : {}),
       ...(data.punchout ? { punchout: data.punchout } : {}),
-    } as StorefrontEventEnvelope<E>
+    } as ThemeEventEnvelope<E>
 
     // purchase: the order number IS the event id, and an order is emitted once.
     let transactionId: string | null = null
@@ -159,12 +159,12 @@ export function createStorefrontEvents(options: StorefrontEventsOptions): Storef
       }
     }
 
-    scrubStorefrontEvent(envelope)
+    scrubThemeEvent(envelope)
 
     if (options.validate) {
-      const errors = validateStorefrontEvent(envelope)
+      const errors = validateThemeEvent(envelope)
       if (errors.length) {
-        const message = `[revenexx storefront-events] '${event}' not emitted:\n  ${errors.join('\n  ')}`
+        const message = `[revenexx theme-events] '${event}' not emitted:\n  ${errors.join('\n  ')}`
         if (options.onInvalid === 'throw') throw new TypeError(message)
         logger.warn(message)
         return null
@@ -174,13 +174,13 @@ export function createStorefrontEvents(options: StorefrontEventsOptions): Storef
     if (transactionId) markPurchase(transactionId)
 
     try {
-      options.callHook?.(STOREFRONT_EVENT_HOOK, envelope)
+      options.callHook?.(THEME_EVENT_HOOK, envelope)
     }
     catch (err) {
-      logger.warn('[revenexx storefront-events] a hook listener failed', err)
+      logger.warn('[revenexx theme-events] a hook listener failed', err)
     }
     if (target && typeof CustomEvent === 'function') {
-      target.dispatchEvent(new CustomEvent(STOREFRONT_EVENT_DOM, { detail: envelope }))
+      target.dispatchEvent(new CustomEvent(THEME_EVENT_DOM, { detail: envelope }))
     }
     return envelope
   }

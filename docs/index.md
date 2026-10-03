@@ -9,7 +9,7 @@
 | `src/runtime/server/utils/delivery.ts` | Who the route calls the gateway as: the brokered `x-revenexx-tenant` + `x-revenexx-context` (ADR-0062), else `tagManager.tenant/apiKey`, else cover's `revenexxTenant/revenexxApiKey`. Never another tenant's key. |
 | `src/runtime/plugin.ts` | Loads the container during SSR (so `hosts` exist for a CSP), then on `app:mounted` waits for `$consentProvider.ready` and starts the runtime. |
 | `src/runtime/core/runtime.ts` | The gating rule, triggers, buffering (≤ 50 per tag) and event delivery. Framework-free; the tests drive it. |
-| `src/runtime/core/adapters.ts` | One adapter per registry key: storefront event + event-map entry → the vendor's own call. |
+| `src/runtime/core/adapters.ts` | One adapter per registry key: theme event + event-map entry → the vendor's own call. |
 | `src/runtime/events/` (+ `src/events.ts`) | The contract's emitter and validator — the `/events` subpath. |
 
 ## Decisions
@@ -25,7 +25,7 @@
    stops delivering events to a tag that is no longer allowed.
 5. **Consent Mode defaults are never written here.** `defaultConsent` is stripped from every
    tag config; the consent module writes `gtag('consent','default',…)` first in `<head>`.
-6. **The dataLayer copy is GTM's, not everybody's.** Storefront events are pushed to
+6. **The dataLayer copy is GTM's, not everybody's.** Theme events are pushed to
    `window[data_layer_name]` in GA4 format — `{ ecommerce: null }` first — only while a GTM tag
    is allowed and active.
 7. **One tag per registry key.** @nuxt/scripts keeps one instance per registry key; the app
@@ -39,7 +39,7 @@
 @nuxt/scripts brings the loader, the consent trigger shape and the registry composables for
 GTM, GA4, Meta, LinkedIn, Bing UET, TikTok, Matomo, Hotjar, Clarity, Intercom and Crisp. This
 module adds etracker (with etCommerce), HubSpot and — because 1.3.x has none — Tawk.to, the
-container from the API instead of `nuxt.config`, and the storefront events.
+container from the API instead of `nuxt.config`, and the theme events.
 
 ## first_party_mode
 

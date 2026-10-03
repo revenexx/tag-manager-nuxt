@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { createStorefrontEvents } from '../src/runtime/events'
+import { createThemeEvents } from '../src/runtime/events'
 
 const nuxtApp = useNuxtApp()
 const { hosts, container } = useTagManager()
 
-const events = createStorefrontEvents({
+const events = createThemeEvents({
   context: () => ({
     market: 'de',
     locale: 'de-DE',

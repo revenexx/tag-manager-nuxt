@@ -1,19 +1,19 @@
 /**
- * Vocabulary v1 of the storefront event contract.
+ * Vocabulary v1 of the theme event contract.
  *
- * The canonical definition is `contract/storefront-events.schema.json`; this
+ * The canonical definition is `contract/theme-events.schema.json`; this
  * file restates the enumerations for code that cannot read JSON at runtime.
  * `test/contract.test.ts` fails the moment the two disagree.
  */
 
-export const STOREFRONT_EVENTS_SCHEMA = 'storefront-events/1' as const
-export const STOREFRONT_EVENTS_SCHEMA_ID = 'https://schemas.revenexx.com/storefront-events.schema.json' as const
+export const THEME_EVENTS_SCHEMA = 'theme-events/1' as const
+export const THEME_EVENTS_SCHEMA_ID = 'https://schemas.revenexx.com/theme-events.schema.json' as const
 
 /** Transport names: the Nuxt hook and the DOM event share one name. */
-export const STOREFRONT_EVENT_HOOK = 'revenexx:event' as const
-export const STOREFRONT_EVENT_DOM = 'revenexx:event' as const
+export const THEME_EVENT_HOOK = 'revenexx:event' as const
+export const THEME_EVENT_DOM = 'revenexx:event' as const
 
-export const STOREFRONT_EVENT_NAMES = [
+export const THEME_EVENT_NAMES = [
   'page_view',
   'view_item_list',
   'search',
@@ -34,7 +34,7 @@ export const STOREFRONT_EVENT_NAMES = [
   'sign_up',
 ] as const
 
-export type StorefrontEventName = typeof STOREFRONT_EVENT_NAMES[number]
+export type ThemeEventName = typeof THEME_EVENT_NAMES[number]
 
 /** The B2B events GA4 has no name for. */
 export const B2B_EVENT_NAMES = ['request_quote', 'add_to_orderlist', 'punchout_transfer'] as const
@@ -64,7 +64,7 @@ export const FORBIDDEN_FIELDS = [
 ] as const
 
 /** Which `ecommerce` fields each commerce event requires, per the schema's allOf. */
-export const ECOMMERCE_REQUIREMENTS: Partial<Record<StorefrontEventName, { required: readonly string[], minItems: number, maxItems?: number }>> = {
+export const ECOMMERCE_REQUIREMENTS: Partial<Record<ThemeEventName, { required: readonly string[], minItems: number, maxItems?: number }>> = {
   view_item_list: { required: ['list_id', 'items'], minItems: 1 },
   select_item: { required: ['items'], minItems: 1, maxItems: 1 },
   view_item: { required: ['items'], minItems: 1, maxItems: 1 },
@@ -81,7 +81,7 @@ export const ECOMMERCE_REQUIREMENTS: Partial<Record<StorefrontEventName, { requi
 }
 
 /** Which non-commerce block each event requires. */
-export const BLOCK_REQUIREMENTS: Partial<Record<StorefrontEventName, 'search' | 'form' | 'auth' | 'punchout'>> = {
+export const BLOCK_REQUIREMENTS: Partial<Record<ThemeEventName, 'search' | 'form' | 'auth' | 'punchout'>> = {
   search: 'search',
   form_submit: 'form',
   login: 'auth',

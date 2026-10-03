@@ -1,14 +1,14 @@
 /**
- * Vendor adapters: turn one storefront event plus one event-map entry into the
+ * Vendor adapters: turn one theme event plus one event-map entry into the
  * vendor's own call. Each adapter writes to the vendor's global the way the
  * vendor's snippet documents it, so a call made before the script finished
  * loading lands in the vendor's own queue where one exists.
  *
  * No adapter reads anything about the visitor beyond the envelope, and the
- * envelope carries no personal data (storefront-events/1). Adapters that the
+ * envelope carries no personal data (theme-events/1). Adapters that the
  * vendor would let us `identify` a person with never do.
  */
-import type { StorefrontEventEnvelope, StorefrontItem } from '../events/types'
+import type { ThemeEventEnvelope, ThemeEventItem } from '../events/types'
 import type { EventMapEntry, PriceBasis } from './types'
 
 export interface AdapterContext {
@@ -21,18 +21,18 @@ export interface AdapterContext {
   state: Record<string, unknown>
 }
 
-export type VendorAdapter = (entry: EventMapEntry, envelope: StorefrontEventEnvelope, ctx: AdapterContext) => void
+export type VendorAdapter = (entry: EventMapEntry, envelope: ThemeEventEnvelope, ctx: AdapterContext) => void
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
 /** An item's unit price in the configured basis, or undefined when unknown. */
-export function unitPrice(item: StorefrontItem, basis: PriceBasis): number | undefined {
+export function unitPrice(item: ThemeEventItem, basis: PriceBasis): number | undefined {
   const v = basis === 'gross' ? item.price_gross : item.price_net
   return typeof v === 'number' ? v : undefined
 }
 
 /** The event's value in the configured basis; falls back to summing the lines. */
-export function eventValue(envelope: StorefrontEventEnvelope, basis: PriceBasis): number | undefined {
+export function eventValue(envelope: ThemeEventEnvelope, basis: PriceBasis): number | undefined {
   const e = envelope.ecommerce
   if (!e) return undefined
   const direct = basis === 'gross' ? e.value_gross : e.value_net
@@ -48,7 +48,7 @@ export function eventValue(envelope: StorefrontEventEnvelope, basis: PriceBasis)
 }
 
 /** GA4's item shape — also what GTM's ecommerce dataLayer expects. */
-export function ga4Item(item: StorefrontItem, basis: PriceBasis): Record<string, unknown> {
+export function ga4Item(item: ThemeEventItem, basis: PriceBasis): Record<string, unknown> {
   const out: Record<string, unknown> = { item_id: item.sku, item_name: item.name, quantity: item.quantity }
   if (item.brand) out.item_brand = item.brand
   if (item.variant) out.item_variant = item.variant
@@ -63,7 +63,7 @@ export function ga4Item(item: StorefrontItem, basis: PriceBasis): Record<string,
 }
 
 /** The GA4 parameter object for one envelope (used by gtag and the dataLayer). */
-export function ga4Params(envelope: StorefrontEventEnvelope, basis: PriceBasis): Record<string, unknown> {
+export function ga4Params(envelope: ThemeEventEnvelope, basis: PriceBasis): Record<string, unknown> {
   const e = envelope.ecommerce
   const out: Record<string, unknown> = {}
   if (e) {
@@ -88,7 +88,7 @@ export function ga4Params(envelope: StorefrontEventEnvelope, basis: PriceBasis):
 }
 
 /** Push one GA4-format event to a dataLayer, clearing the previous ecommerce object first. */
-export function pushToDataLayer(w: Record<string, any>, dataLayerName: string, eventName: string, envelope: StorefrontEventEnvelope, basis: PriceBasis, extra: Record<string, unknown> = {}): void {
+export function pushToDataLayer(w: Record<string, any>, dataLayerName: string, eventName: string, envelope: ThemeEventEnvelope, basis: PriceBasis, extra: Record<string, unknown> = {}): void {
   const dl = (w[dataLayerName] = w[dataLayerName] || [])
   const params = ga4Params(envelope, basis)
   const { currency, value, items, transaction_id, tax, shipping, coupon, item_list_id, item_list_name, shipping_tier, payment_type, ...rest } = params
@@ -119,7 +119,7 @@ const googleTagManager: VendorAdapter = (entry, envelope, ctx) => {
 
 const META_STANDARD = new Set(['PageView', 'ViewContent', 'Search', 'AddToCart', 'AddToWishlist', 'InitiateCheckout', 'AddPaymentInfo', 'Purchase', 'Lead', 'CompleteRegistration', 'Contact', 'SubmitApplication'])
 
-function contentParams(envelope: StorefrontEventEnvelope, basis: PriceBasis): Record<string, unknown> {
+function contentParams(envelope: ThemeEventEnvelope, basis: PriceBasis): Record<string, unknown> {
   const items = envelope.ecommerce?.items ?? []
   const out: Record<string, unknown> = {}
   if (items.length) {
@@ -227,7 +227,7 @@ const clarity: VendorAdapter = (entry, _e, ctx) => {
 
 // ---- Support widgets --------------------------------------------------------
 
-function widgetMeta(envelope: StorefrontEventEnvelope, basis: PriceBasis, params: Record<string, unknown>): Record<string, unknown> {
+function widgetMeta(envelope: ThemeEventEnvelope, basis: PriceBasis, params: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...params }
   const value = eventValue(envelope, basis)
   if (value !== undefined) {
@@ -259,7 +259,7 @@ const tawkTo: VendorAdapter = (entry, envelope, ctx) => {
 const etPrice = (n: number | undefined): string => (n === undefined ? '0' : n.toFixed(2))
 const cut = (s: string | undefined, n: number): string => String(s ?? '').slice(0, n)
 
-export function etrackerProduct(item: StorefrontItem, currency: string, basis: PriceBasis): Record<string, unknown> {
+export function etrackerProduct(item: ThemeEventItem, currency: string, basis: PriceBasis): Record<string, unknown> {
   const product: Record<string, unknown> = {
     id: cut(item.sku, 50),
     name: cut(item.name, 255),
@@ -325,7 +325,7 @@ const etracker: VendorAdapter = (entry, envelope, ctx) => {
       return
     }
     default:
-      // Anything else is a user-defined event: object = the mapped name, category = the storefront event.
+      // Anything else is a user-defined event: object = the mapped name, category = the theme event.
       etQueue(w, () => {
         const Ctor = w.et_UserDefinedEvent
         if (w._etracker && typeof Ctor === 'function') w._etracker.sendEvent(new Ctor(entry.name, envelope.event, String(ctx.params.action ?? ''), String(ctx.params.type ?? '')))

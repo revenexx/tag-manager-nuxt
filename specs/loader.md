@@ -3,7 +3,7 @@ feature: loader
 title: The loader obeys the gating rule
 where:
   - The module in a theme — modules list after @nuxt/scripts and the consent module
-  - The storefront event hook — revenexx:event
+  - The theme event hook — revenexx:event
 docs:
   - docs/index.md
 updated: 2026-10-03
@@ -12,7 +12,7 @@ updated: 2026-10-03
 # The loader obeys the gating rule
 
 **The loader** is the part of the module that decides, on every page, which marketing tag
-may load and which storefront event may reach it. It does not decide what the visitor
+may load and which theme event may reach it. It does not decide what the visitor
 consented to. That answer comes from the consent provider the consent module registers, and
 the loader asks it for every tag and for every event.
 

@@ -1,9 +1,9 @@
-# Storefront event contract — `storefront-events/1`
+# Theme event contract — `theme-events/1`
 
-`storefront-events.schema.json` in this directory is the canonical contract (JSON Schema
-2020-12, `$id` `https://schemas.revenexx.com/storefront-events.schema.json`). It is
+`theme-events.schema.json` in this directory is the canonical contract (JSON Schema
+2020-12, `$id` `https://schemas.revenexx.com/theme-events.schema.json`). It is
 published from the `schemas` repository; this copy is the source that PR is made from, and
-the package ships it at `@revenexx/tag-manager-nuxt/contract/storefront-events.schema.json`.
+the package ships it at `@revenexx/tag-manager-nuxt/contract/theme-events.schema.json`.
 
 Two sides read it. The **theme** (`@revenexx/cover`) says what happened. **Listeners** hear
 it: `@revenexx/tag-manager-nuxt` in the browser today, the Analytics Studio server-side later
@@ -15,7 +15,7 @@ same vocabulary through the host bridge's `track` action, which the host transla
 
 ```json
 {
-  "schema": "storefront-events/1",
+  "schema": "theme-events/1",
   "event": "add_to_cart",
   "event_id": "9b0c3f0e-…",
   "occurred_at": "2026-10-03T09:12:44.120Z",
@@ -77,9 +77,9 @@ Enhanced Conversions and customer matching are out of scope for v1 for exactly t
 
 ```ts
 // in @revenexx/cover — no Tag Manager module needed for this import
-import { createStorefrontEvents } from '@revenexx/tag-manager-nuxt/events'
+import { createThemeEvents } from '@revenexx/tag-manager-nuxt/events'
 
-const events = createStorefrontEvents({
+const events = createThemeEvents({
   context: () => ({ market, locale, currency, page: { path: route.path, type }, customer: { authenticated, b2b } }),
   callHook: (name, envelope) => nuxtApp.callHook(name, envelope),   // → Nuxt modules
   validate: import.meta.dev,                                          // dev: invalid envelopes are dropped + logged
@@ -103,7 +103,7 @@ editor shells call `cart.addItem` to seed sample carts
 
 | Event | Where | Notes |
 | --- | --- | --- |
-| `page_view` | new client plugin `cover/app/plugins/storefront-events.client.ts` (pattern: `auth-init.client.ts`), `router.afterEach` / `page:finish` | Pages are blökkli-authored; the router hook is the only uniform point. Skip `/admin/**`, `/preview/**`. |
+| `page_view` | new client plugin `cover/app/plugins/theme-events.client.ts` (pattern: `auth-init.client.ts`), `router.afterEach` / `page:finish` | Pages are blökkli-authored; the router hook is the only uniform point. Skip `/admin/**`, `/preview/**`. |
 | `view_item_list` | `cover/app/composables/useProductListing.ts` ~:200 (watch on `products`), called from `useCategoryListing.ts:17` | `list_id` = `category:<categorySlug>[/<subcategorySlug>]`; prices arrive later via offers. |
 | `search` | `cover/app/composables/useSearchListing.ts:24` (query :34, listing :56) | Watch `(query, found)`, not keystrokes; skip `q=*` (catalog). |
 | `select_item` | `cover/app/components/product/card/Compact.vue:64` and `:85` | List id/index must be provided by the listing (`cover-theme/app/composables/useListingContext.ts`). |

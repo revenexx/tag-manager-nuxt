@@ -40,7 +40,7 @@ export interface ContainerTag {
   purpose_code: string
   chained_vendor_codes: string[]
   load: LoadTiming
-  /** Storefront event name → vendor call. Already merged with the registry default at publish. */
+  /** Theme event name → vendor call. Already merged with the registry default at publish. */
   event_map: Record<string, EventMapEntry | null>
   /** True when the tag has no trigger: it loads on every page. */
   every_page: boolean

@@ -26,7 +26,7 @@ import {
   useState,
 } from '#imports'
 import type { Plugin } from '#app'
-import type { StorefrontEventEnvelope } from './events/types'
+import type { ThemeEventEnvelope } from './events/types'
 import { isEditorOrPreviewContext } from './core/context'
 import { createTagRuntime, LOG_PREFIX, MAX_BUFFERED_EVENTS } from './core/runtime'
 import type { TagRuntime } from './core/runtime'
@@ -71,8 +71,8 @@ const tagManagerPlugin: Plugin = defineNuxtPlugin({
     const previewToken = typeof route?.query?.[previewParam] === 'string' ? route.query[previewParam] as string : null
 
     let runtime: TagRuntime | null = null
-    const early: StorefrontEventEnvelope[] = []
-    const intake = (envelope: StorefrontEventEnvelope) => {
+    const early: ThemeEventEnvelope[] = []
+    const intake = (envelope: ThemeEventEnvelope) => {
       if (runtime) return runtime.handle(envelope)
       early.push(envelope)
       if (early.length > MAX_BUFFERED_EVENTS) early.shift()
@@ -95,7 +95,7 @@ const tagManagerPlugin: Plugin = defineNuxtPlugin({
     if (import.meta.server) return
 
     const w = window as unknown as Record<string, any>
-    w.addEventListener('revenexx:event', (e: Event) => intake((e as CustomEvent<StorefrontEventEnvelope>).detail))
+    w.addEventListener('revenexx:event', (e: Event) => intake((e as CustomEvent<ThemeEventEnvelope>).detail))
 
     const debug = Boolean(config?.debug || state.value.container.preview)
     const editorContext = isEditorOrPreviewContext(window.location.hostname, window.location.pathname)

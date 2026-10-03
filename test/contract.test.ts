@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { createStorefrontEvents, validateStorefrontEvent } from '../src/runtime/events'
-import { BLOCK_REQUIREMENTS, ECOMMERCE_REQUIREMENTS, FORBIDDEN_FIELDS, PAGE_TYPES, STOREFRONT_EVENT_NAMES, STOREFRONT_EVENTS_SCHEMA_ID } from '../src/runtime/events/vocabulary'
+import { createThemeEvents, validateThemeEvent } from '../src/runtime/events'
+import { BLOCK_REQUIREMENTS, ECOMMERCE_REQUIREMENTS, FORBIDDEN_FIELDS, PAGE_TYPES, THEME_EVENT_NAMES, THEME_EVENTS_SCHEMA_ID } from '../src/runtime/events/vocabulary'
 import { ajvValidate, schema } from './fixtures/ajv'
 import { CONTEXT, DATA, envelope, ITEM } from './fixtures/events'
 
-const both = (e: unknown) => ({ ajv: ajvValidate(e), ours: validateStorefrontEvent(e) })
+const both = (e: unknown) => ({ ajv: ajvValidate(e), ours: validateThemeEvent(e) })
 
 function emitter(storage = new Map<string, string>()) {
   const hooked: unknown[] = []
-  const events = createStorefrontEvents({
+  const events = createThemeEvents({
     context: () => structuredClone(CONTEXT),
     callHook: (_name, e) => hooked.push(e),
     target: null,
@@ -21,12 +21,12 @@ function emitter(storage = new Map<string, string>()) {
 
 describe('the schema and its TypeScript twin', () => {
   it('names the published id and version', () => {
-    expect(schema.$id).toBe(STOREFRONT_EVENTS_SCHEMA_ID)
-    expect(schema.properties.schema.const).toBe('storefront-events/1')
+    expect(schema.$id).toBe(THEME_EVENTS_SCHEMA_ID)
+    expect(schema.properties.schema.const).toBe('theme-events/1')
   })
 
   it('lists the same vocabulary, page types and forbidden fields', () => {
-    expect(schema.properties.event.enum).toEqual([...STOREFRONT_EVENT_NAMES])
+    expect(schema.properties.event.enum).toEqual([...THEME_EVENT_NAMES])
     expect(schema.$defs.page.properties.type.enum).toEqual([...PAGE_TYPES])
     expect(schema['x-revenexx-forbidden-fields']).toEqual([...FORBIDDEN_FIELDS])
   })
@@ -50,7 +50,7 @@ describe('the schema and its TypeScript twin', () => {
   })
 
   it('agrees with a 2020-12 validator on every valid fixture', () => {
-    for (const name of STOREFRONT_EVENT_NAMES) {
+    for (const name of THEME_EVENT_NAMES) {
       const r = both(envelope(name))
       expect(r.ajv, `${name}: ${JSON.stringify(ajvValidate.errors)}`).toBe(true)
       expect(r.ours, name).toEqual([])
@@ -76,25 +76,25 @@ describe('the schema and its TypeScript twin', () => {
   })
 })
 
-describe('storefront events are one versioned contract', () => {
-  it('@spec:storefront-events:AC-1 every emitted event validates against the schema version it names', () => {
+describe('theme events are one versioned contract', () => {
+  it('@spec:theme-events:AC-1 every emitted event validates against the schema version it names', () => {
     const { events, hooked } = emitter()
-    for (const name of STOREFRONT_EVENT_NAMES) {
+    for (const name of THEME_EVENT_NAMES) {
       const out = events.emit(name, structuredClone(DATA[name]))
       expect(out, name).not.toBeNull()
-      expect(out!.schema).toBe('storefront-events/1')
+      expect(out!.schema).toBe('theme-events/1')
       expect(ajvValidate(out), `${name}: ${JSON.stringify(ajvValidate.errors)}`).toBe(true)
     }
-    expect(hooked).toHaveLength(STOREFRONT_EVENT_NAMES.length)
+    expect(hooked).toHaveLength(THEME_EVENT_NAMES.length)
   })
 
-  it('@spec:storefront-events:AC-1 an invalid event is not emitted in validate mode', () => {
+  it('@spec:theme-events:AC-1 an invalid event is not emitted in validate mode', () => {
     const { events, hooked } = emitter()
     expect(() => events.emit('view_item', { ecommerce: { items: [] } })).toThrow(/at least 1/)
     expect(hooked).toHaveLength(0)
   })
 
-  it('@spec:storefront-events:AC-3 purchase fires once per order across reloads', () => {
+  it('@spec:theme-events:AC-3 purchase fires once per order across reloads', () => {
     const storage = new Map<string, string>()
     const first = emitter(storage)
     const once = first.events.emit('purchase', structuredClone(DATA.purchase))
@@ -108,30 +108,30 @@ describe('storefront events are one versioned contract', () => {
     expect(first.hooked).toHaveLength(1)
   })
 
-  it('@spec:storefront-events:AC-3 a different order is its own purchase', () => {
+  it('@spec:theme-events:AC-3 a different order is its own purchase', () => {
     const { events, hooked } = emitter()
     events.emit('purchase', structuredClone(DATA.purchase))
     events.emit('purchase', { ecommerce: { ...structuredClone(DATA.purchase.ecommerce!), transaction_id: 'ORD-000124' } })
     expect(hooked).toHaveLength(2)
   })
 
-  it('@spec:storefront-events:AC-4 no event carries personal data', () => {
+  it('@spec:theme-events:AC-4 no event carries personal data', () => {
     for (const field of ['email', 'name', 'phone', 'customer_number', 'company_name']) {
       const e: any = envelope('view_item')
       e.customer = { ...e.customer, [field]: 'x' }
       expect(both(e).ajv, field).toBe(false)
-      expect(validateStorefrontEvent(e).join(), field).toMatch(new RegExp(`customer.${field}`))
+      expect(validateThemeEvent(e).join(), field).toMatch(new RegExp(`customer.${field}`))
     }
     const top: any = envelope('login')
     top.email = 'a@b.de'
     expect(both(top).ajv).toBe(false)
-    expect(validateStorefrontEvent(top).join()).toMatch(/personal data is forbidden/)
+    expect(validateThemeEvent(top).join()).toMatch(/personal data is forbidden/)
     const onItem: any = envelope('add_to_cart')
     onItem.ecommerce.items[0].customer_number = '10042'
     expect(both(onItem).ajv).toBe(false)
   })
 
-  it('@spec:storefront-events:AC-4 a typed email or phone never leaves the emitter', () => {
+  it('@spec:theme-events:AC-4 a typed email or phone never leaves the emitter', () => {
     const { events } = emitter()
     const a = events.emit('search', { search: { search_term: 'max.mustermann@example.de', results_count: 0 } })
     const b = events.emit('search', { search: { search_term: '+49 921 897 214', results_count: 0 } })
@@ -141,8 +141,8 @@ describe('storefront events are one versioned contract', () => {
     expect(c?.page.path).toBe('/search')
   })
 
-  it('@spec:storefront-events:AC-4 the visitor is described by two booleans only', () => {
-    const events = createStorefrontEvents({
+  it('@spec:theme-events:AC-4 the visitor is described by two booleans only', () => {
+    const events = createThemeEvents({
       context: () => ({ ...structuredClone(CONTEXT), customer: { authenticated: true, b2b: true, email: 'x@y.de' } as never }),
       target: null,
       storage: null,
@@ -151,7 +151,7 @@ describe('storefront events are one versioned contract', () => {
     expect(Object.keys(out!.customer).sort()).toEqual(['authenticated', 'b2b'])
   })
 
-  it('@spec:storefront-events:AC-5 items carry net and gross where the price is known', () => {
+  it('@spec:theme-events:AC-5 items carry net and gross where the price is known', () => {
     const { events } = emitter()
     const out = events.emit('view_item', { ecommerce: { items: [ITEM] } })
     expect(out?.ecommerce?.items?.[0]).toMatchObject({ price_net: 4.18, price_gross: 4.97 })
@@ -162,7 +162,7 @@ describe('storefront events are one versioned contract', () => {
 
   it('dispatches the DOM event with the envelope as detail', () => {
     const seen: Event[] = []
-    const events = createStorefrontEvents({ context: () => structuredClone(CONTEXT), target: { dispatchEvent: (e) => { seen.push(e); return true } }, storage: null })
+    const events = createThemeEvents({ context: () => structuredClone(CONTEXT), target: { dispatchEvent: (e) => { seen.push(e); return true } }, storage: null })
     const out = events.emit('view_item', { ecommerce: { items: [ITEM] } })
     expect(seen).toHaveLength(1)
     expect(seen[0]!.type).toBe('revenexx:event')

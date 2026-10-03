@@ -1,11 +1,11 @@
 /**
- * TypeScript shape of `contract/storefront-events.schema.json` (storefront-events/1).
+ * TypeScript shape of `contract/theme-events.schema.json` (theme-events/1).
  * Handwritten from the schema; `test/contract.test.ts` checks the enumerations
  * and the required sets against the JSON so the two cannot drift silently.
  */
-import type { AuthMethod, PageType, PunchoutProtocol, StorefrontEventName } from './vocabulary'
+import type { AuthMethod, PageType, PunchoutProtocol, ThemeEventName } from './vocabulary'
 
-export interface StorefrontItem {
+export interface ThemeEventItem {
   /** Article number; the product id in every vendor mapping. */
   sku: string
   name: string
@@ -24,8 +24,8 @@ export interface StorefrontItem {
   list_id?: string
 }
 
-export interface StorefrontEcommerce {
-  items?: StorefrontItem[]
+export interface ThemeEventEcommerce {
+  items?: ThemeEventItem[]
   value_net?: number | null
   value_gross?: number | null
   tax?: number
@@ -39,25 +39,25 @@ export interface StorefrontEcommerce {
   payment_type?: string
 }
 
-export interface StorefrontPage {
+export interface ThemeEventPage {
   /** Route path without query string or fragment. */
   path: string
   type: PageType
 }
 
 /** Everything the contract may say about the visitor. Nothing else, ever. */
-export interface StorefrontCustomer {
+export interface ThemeEventCustomer {
   authenticated: boolean
   b2b: boolean
 }
 
-export interface StorefrontSearch { search_term: string, results_count: number }
-export interface StorefrontForm { form_code: string, outcome?: 'accepted' | 'rejected' }
-export interface StorefrontAuth { method: AuthMethod }
-export interface StorefrontPunchout { protocol: PunchoutProtocol }
+export interface ThemeEventSearch { search_term: string, results_count: number }
+export interface ThemeEventForm { form_code: string, outcome?: 'accepted' | 'rejected' }
+export interface ThemeEventAuth { method: AuthMethod }
+export interface ThemeEventPunchout { protocol: PunchoutProtocol }
 
-export interface StorefrontEventEnvelope<E extends StorefrontEventName = StorefrontEventName> {
-  schema: 'storefront-events/1'
+export interface ThemeEventEnvelope<E extends ThemeEventName = ThemeEventName> {
+  schema: 'theme-events/1'
   event: E
   /** UUID v4; for `purchase` the transaction_id. */
   event_id: string
@@ -65,23 +65,23 @@ export interface StorefrontEventEnvelope<E extends StorefrontEventName = Storefr
   market: string
   locale: string
   currency: string
-  page: StorefrontPage
-  customer: StorefrontCustomer
-  ecommerce?: StorefrontEcommerce
-  search?: StorefrontSearch
-  form?: StorefrontForm
-  auth?: StorefrontAuth
-  punchout?: StorefrontPunchout
+  page: ThemeEventPage
+  customer: ThemeEventCustomer
+  ecommerce?: ThemeEventEcommerce
+  search?: ThemeEventSearch
+  form?: ThemeEventForm
+  auth?: ThemeEventAuth
+  punchout?: ThemeEventPunchout
 }
 
 /** What a caller passes to `emit()`: the event-specific part of the envelope. */
-export type StorefrontEventData = Partial<Pick<StorefrontEventEnvelope, 'ecommerce' | 'search' | 'form' | 'auth' | 'punchout' | 'page'>>
+export type ThemeEventData = Partial<Pick<ThemeEventEnvelope, 'ecommerce' | 'search' | 'form' | 'auth' | 'punchout' | 'page'>>
 
 /** The context the emitter stamps onto every envelope. */
-export interface StorefrontEventContext {
+export interface ThemeEventContext {
   market: string
   locale: string
   currency: string
-  page: StorefrontPage
-  customer: StorefrontCustomer
+  page: ThemeEventPage
+  customer: ThemeEventCustomer
 }

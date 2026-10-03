@@ -1,5 +1,5 @@
 /**
- * The tag runtime: which tag loads when, and which storefront event reaches
+ * The tag runtime: which tag loads when, and which theme event reaches
  * which tag. Framework-free so every acceptance criterion of the loader can be
  * driven without a browser; the Nuxt plugin hands it a `load` function backed
  * by @nuxt/scripts and the visitor's consent provider.
@@ -16,7 +16,7 @@
  *   - a transition allowed → not allowed is the consent module's page reload,
  *     not ours: a loaded script cannot be unloaded.
  */
-import type { StorefrontEventEnvelope } from '../events/types'
+import type { ThemeEventEnvelope } from '../events/types'
 import { ADAPTERS, pushToDataLayer } from './adapters'
 import { eventTriggerMatches, NECESSARY_PURPOSE, substitute, tagWantedOnPage } from './context'
 import type { ConsentProvider, ContainerTag, DeliveredContainer, EventMapEntry, LoadTiming } from './types'
@@ -50,15 +50,15 @@ export interface TagRuntimeOptions {
 interface TagSlot {
   tag: ContainerTag
   state: TagLoadState
-  buffer: StorefrontEventEnvelope[]
+  buffer: ThemeEventEnvelope[]
   adapterState: Record<string, unknown>
 }
 
 export interface TagRuntime {
   /** Activate the tags wanted on the current page. Call once with the first page. */
   start(page: { path: string, type?: string }, b2b?: boolean | null): void
-  /** Hand one storefront event to the runtime. */
-  handle(envelope: StorefrontEventEnvelope): void
+  /** Hand one theme event to the runtime. */
+  handle(envelope: ThemeEventEnvelope): void
   /** Whether this tag may run right now under the gating rule. */
   allowed(tag: ContainerTag): boolean
   state(code: string): TagLoadState | undefined
@@ -100,7 +100,7 @@ export function createTagRuntime(options: TagRuntimeOptions): TagRuntime {
     return tag.purpose_code === NECESSARY_PURPOSE
   }
 
-  function deliver(slot: TagSlot, envelope: StorefrontEventEnvelope): void {
+  function deliver(slot: TagSlot, envelope: ThemeEventEnvelope): void {
     const entry = normaliseEntry(slot.tag.event_map?.[envelope.event] as EventMapEntry | string | null | undefined)
     const adapter = slot.tag.registry_key ? ADAPTERS[slot.tag.registry_key] : undefined
     if (!entry || !adapter) return
@@ -159,7 +159,7 @@ export function createTagRuntime(options: TagRuntimeOptions): TagRuntime {
     }
   }
 
-  function handle(envelope: StorefrontEventEnvelope): void {
+  function handle(envelope: ThemeEventEnvelope): void {
     if (!envelope || typeof envelope !== 'object' || !envelope.event) return
     // The hook and the DOM event both carry each envelope: deliver it once.
     if (envelope.event_id) {

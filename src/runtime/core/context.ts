@@ -2,7 +2,7 @@
  * Small pure helpers the runtime shares: the editor/preview test, variable
  * substitution, and trigger matching.
  */
-import type { StorefrontEventEnvelope } from '../events/types'
+import type { ThemeEventEnvelope } from '../events/types'
 import type { ContainerTag, ContainerTrigger, ContainerVariable, TriggerConditions } from './types'
 
 /**
@@ -31,7 +31,7 @@ export function readPath(source: unknown, path: string): unknown {
 }
 
 export interface VariableScope {
-  envelope?: StorefrontEventEnvelope | null
+  envelope?: ThemeEventEnvelope | null
   page?: { path: string, type?: string } | null
 }
 
@@ -88,8 +88,8 @@ export function pageTriggerMatches(t: ContainerTrigger, page: { path: string, ty
   return t.kind === 'page_view' && conditionsMatch(t.conditions, page, b2b)
 }
 
-/** Does this trigger fire for this storefront event? */
-export function eventTriggerMatches(t: ContainerTrigger, envelope: StorefrontEventEnvelope): boolean {
+/** Does this trigger fire for this theme event? */
+export function eventTriggerMatches(t: ContainerTrigger, envelope: ThemeEventEnvelope): boolean {
   return t.kind === 'storefront_event' && t.event_name === envelope.event
     && conditionsMatch(t.conditions, envelope.page, envelope.customer?.b2b ?? null)
 }

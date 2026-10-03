@@ -1,17 +1,17 @@
 ---
-feature: storefront-events
-title: Storefront events are one versioned contract
+feature: theme-events
+title: Theme events are one versioned contract
 where:
-  - The contract — storefront-events/1
+  - The contract — theme-events/1
   - The emitter — @revenexx/tag-manager-nuxt/events
 docs:
   - docs/contract.md
 updated: 2026-10-03
 ---
 
-# Storefront events are one versioned contract
+# Theme events are one versioned contract
 
-**Storefront events** are the things that happen in a shop, said once in one shape: a product
+**Theme events** are the things that happen in a shop, said once in one shape: a product
 seen, an item added, an order placed, a quote requested. The theme says them and any number of
 listeners hear them — the Tag Manager in the browser today, the Analytics Studio on the server
 later. The contract belongs to neither side, which is why it carries a version of its own.
