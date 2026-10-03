@@ -32,7 +32,7 @@ import { createTagRuntime, LOG_PREFIX, MAX_BUFFERED_EVENTS } from './core/runtim
 import type { TagRuntime } from './core/runtime'
 import { browserTiming } from './core/timing'
 import type { ConsentProvider, ContainerTag, DeliveredContainer } from './core/types'
-import { EMPTY_CONTAINER } from './core/types'
+import { EMPTY_CONTAINER, isDeliveredContainer } from './core/types'
 import { CONTAINER_STATE_KEY } from './composables/useTagManager'
 import { useScriptEtracker } from './registry/etracker'
 import { useScriptHubspot } from './registry/hubspot'
@@ -80,11 +80,13 @@ const tagManagerPlugin: Plugin = defineNuxtPlugin({
     nuxtApp.hook('revenexx:event', intake)
 
     // Fetch on the server, and on the client only if SSR did not (an SPA page).
+    if (!isDeliveredContainer(state.value)) state.value = EMPTY_CONTAINER
     if (import.meta.server || !state.value.container.version) {
       try {
         const query: Record<string, string> = {}
         if (previewToken) query.preview = previewToken
-        state.value = await useRequestFetch()<DeliveredContainer>(config?.endpoint || '/_tag-manager/container', { query })
+        const answer = await useRequestFetch()<unknown>(config?.endpoint || '/_tag-manager/container', { query })
+        state.value = isDeliveredContainer(answer) ? answer : EMPTY_CONTAINER
       }
       catch {
         state.value = EMPTY_CONTAINER

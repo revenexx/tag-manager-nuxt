@@ -77,6 +77,20 @@ export interface DeliveredContainer {
   hosts: string[]
 }
 
+/**
+ * Whether a response really is a delivered container. Anything else (an error page
+ * answered with 200, a proxy's HTML, a partial body) must not reach the runtime:
+ * the module fails closed to the empty container instead of crashing app start-up.
+ */
+export function isDeliveredContainer(value: unknown): value is DeliveredContainer {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  const c = v.container as Record<string, unknown> | undefined
+  return Boolean(c) && typeof c === 'object'
+    && typeof v.settings === 'object' && v.settings !== null
+    && Array.isArray(v.tags) && Array.isArray(v.variables) && Array.isArray(v.hosts)
+}
+
 export type ConsentDecision = 'granted' | 'denied' | 'objected'
 
 export interface ConsentState {
