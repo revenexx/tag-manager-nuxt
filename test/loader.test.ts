@@ -152,7 +152,7 @@ describe('the loader obeys the gating rule', () => {
 
   it('loads a theme-event-triggered tag when its event happens, and hands it that event', async () => {
     const consent = fakeProvider({ purposes: { marketing: 'granted' } })
-    const conv = tag('conv', { registry_key: 'metaPixel', vendor_code: 'meta', purpose_code: 'marketing', every_page: false, triggers: [{ code: 'buy', kind: 'storefront_event', event_name: 'purchase' }], event_map: { purchase: { name: 'Purchase' } } })
+    const conv = tag('conv', { registry_key: 'metaPixel', vendor_code: 'meta', purpose_code: 'marketing', every_page: false, triggers: [{ code: 'buy', kind: 'theme_event', event_name: 'purchase' }], event_map: { purchase: { name: 'Purchase' } } })
     const { runtime, loader, w } = run([conv], { provider: consent.provider })
     await flush()
     expect(loader.registered).toEqual([])

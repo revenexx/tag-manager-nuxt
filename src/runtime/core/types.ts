@@ -24,7 +24,7 @@ export interface TriggerConditions {
 
 export interface ContainerTrigger {
   code: string
-  kind: 'page_view' | 'storefront_event'
+  kind: 'page_view' | 'theme_event'
   event_name?: string | null
   conditions?: TriggerConditions
 }

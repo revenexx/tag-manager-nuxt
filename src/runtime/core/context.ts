@@ -90,7 +90,7 @@ export function pageTriggerMatches(t: ContainerTrigger, page: { path: string, ty
 
 /** Does this trigger fire for this theme event? */
 export function eventTriggerMatches(t: ContainerTrigger, envelope: ThemeEventEnvelope): boolean {
-  return t.kind === 'storefront_event' && t.event_name === envelope.event
+  return t.kind === 'theme_event' && t.event_name === envelope.event
     && conditionsMatch(t.conditions, envelope.page, envelope.customer?.b2b ?? null)
 }
 
