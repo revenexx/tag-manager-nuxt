@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+*.log
+.DS_Store
+.idea
+.vscode
+.eslintcache
+*.tgz
+.nuxt
+.output
+playground/.nuxt
+playground/.output

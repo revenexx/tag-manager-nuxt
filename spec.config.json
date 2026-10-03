@@ -1,0 +1,42 @@
+{
+  "$comment": "Everything project-specific about the feature-spec gate lives here — the format rules and the workflow are project-agnostic and live in the `feature-spec` skill (skills-catalog/development/feature-spec). Keys prefixed `$comment` are ignored by the gate and are the documentation for this file.",
+  "specDir": "specs",
+  "$comment_audience": "Who the promises in this corpus are made to, in this repo's own words. NOT read by the gate — it settles, for whoever writes a spec, which vocabulary a promise is stated in. What stays banned is the implementation behind the promise — modules, tables, function names — and that half IS checked, by implementationPattern.",
+  "audience": "a theme developer adding the module to a Nuxt storefront, and a theme that emits the storefront event contract: the module's options, the composable it exposes, the hook and DOM event names, the vendor calls a tag receives and the shape of an envelope ARE the promise, so a criterion may name them. The source files, the internal runtime and the test doubles are implementation and belong in docs/.",
+  "$comment_ticketPattern": "Shape of a ticket id in this project's tracker (Linear). `AC-<n>` is reserved for acceptance-criterion ids and is never read as a ticket.",
+  "ticketPattern": "[A-Z][A-Z0-9]*-\\d+",
+  "$comment_implementationPattern": "What counts as naming the implementation in a spec. A promise that names a module rots silently on the first rename, which is why the ban is checked. `.md` stays legal so specs can link each other. The trailing lookahead keeps `.js` from matching inside `.json`, so a spec may name a contract document.",
+  "implementationPattern": "(?:\\bsrc/\\S+|\\b[\\w./-]+\\.(?:vue|tsx|ts|mjs|cjs|jsx|js)(?![\\w-]))",
+  "$comment_companions": "Files in the spec directory that are not specs. `README.md` is exempt separately, because it is the index.",
+  "companions": [],
+  "$comment_houseRules": "Where this repository's own additions to the format are written down. `README.md` is the index; three of those additions already live there (the cuts, the words, the surface register). It may narrow and extend what the skill says, never switch off a rule the gate checks, and never restate a key settled here.",
+  "houseRules": "README.md",
+  "$comment_indexRegister": "Heading of the index section recording surfaces that carry no promise yet. Each row names the ticket that will promise its surface.",
+  "indexRegister": "What is not promised yet",
+  "$comment_indexAsides": "The index's other non-inventory sections, by heading, so a bullet in one of them is not read as a spec's inventory row.",
+  "indexAsides": [
+    "How a spec is cut here",
+    "Words these specs use",
+    "The surfaces, and what the product calls them",
+    "How this stays true"
+  ],
+  "$comment_wordRegister": "Heading of the index section recording the words this corpus settled. An entry whose sentence carries `Not:` retires the words after it everywhere in the corpus.",
+  "wordRegister": "Words these specs use",
+  "$comment_formDebt": "Three rules of the written form, held by a ratchet: `## Gaps` entries sit under a bold label; a promise sentence runs to at most 25 words; a `**Then**`/`**And**` states one outcome. The figure must equal what the corpus contains. This corpus started at 0 and stays there.",
+  "formDebt": {
+    "unlabelledGaps": 0,
+    "longPromises": 0,
+    "compoundPromises": 0
+  },
+  "$comment_ceiling": "What the test harness here cannot reach at any layer — the rule that routes a promise out of the ordered layers and into `manual` or `todo`. NOT read by the gate. (1) The data backend: the unique indexes behind the rep's code and behind the pair of a rep and a customer, tenant isolation, column defaults and foreign keys — the tests run against an in-memory stand-in that applies none of them, so a promise whose SUBJECT is one of them is `manual`. That is the sharpest case in this app: uniqueness is deliberately an index and not a route guard, so only a live call proves it, and a route guard that merely makes the refusal readable proves nothing about two simultaneous writes. (2) The other apps and the gateway: an organization and a contact both live in another app, and the gateway's contract validation and the event bus are answered by a double — a criterion stops at what this app asks, sends or records. (3) The Cockpit: no layer here runs a browser, so what a screen shows is not observable; a spec may name a screen in `where:` while every criterion about it is `manual`. The live E2E against api.revenexx.com that closes a ticket is the manual proof.",
+  "$comment_suites": "Which of the ordered layers this repository has, and how to enumerate each one. The gate's vocabulary is these keys plus `manual` and `todo`. Declare only the layers that exist. `runHint` is not read by the gate; it is the command for whoever has to run one feature's proofs by hand.",
+  "$comment_adapters": "node:test has no listing mode, so it borrows the `vitest` adapter via the bundled reporter, which RUNS only the claiming tests (`--test-name-pattern='@spec:'`) and prints `[{ name, file }]`. Two consequences: only tagged tests run when the gate enumerates, and a claiming test that FAILS takes the listing down with it, so the gate reports coverage as unknown until that proof is green again. The glob is quoted so node does the matching.",
+  "suites": {
+    "unit": {
+      "adapter": "vitest",
+      "command": "pnpm exec vitest list --json",
+      "runHint": "pnpm exec vitest run -t '@spec:<feature>'"
+    }
+  },
+  "ceiling": "Three things are stood in for at every layer here. (1) The browser: no layer loads a real vendor script, so what a vendor's servers receive is not observable — a criterion stops at the call made to the vendor's global. (2) The consent module: its provider is a double with the shared contract's shape. (3) The gateway: the container is a fixture. A criterion whose subject is one of those is `manual` with a reason or `todo` with a ticket."
+}
