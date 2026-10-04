@@ -1,129 +1,247 @@
-# Theme event contract — `theme-events/1`
+# Theme events: `theme-events/1`
 
-`theme-events.schema.json` in this directory is the canonical contract (JSON Schema
-2020-12, `$id` `https://schemas.revenexx.com/theme-events.schema.json`). It is
-published from the `schemas` repository; this copy is the source that PR is made from, and
-the package ships it at `@revenexx/tag-manager-nuxt/contract/theme-events.schema.json`.
+A small, vendor-neutral vocabulary that a storefront theme uses to say **what happened**: a
+page was shown, an item was added to the cart, an order was placed, a quote was requested. The
+theme says it once. Listeners such as
+[`@revenexx/tag-manager-nuxt`](https://github.com/revenexx/tag-manager-nuxt) translate it into
+each analytics or marketing vendor's own calls.
 
-Two sides read it. The **theme** (`@revenexx/cover`) says what happened. **Listeners** hear
-it: `@revenexx/tag-manager-nuxt` in the browser today, the Analytics Studio server-side later
-(#142). PostHog never — it is internal (ADR-0025). Theme extensions (ADR-0111) will use the
-same vocabulary through the host bridge's `track` action, which the host translates into
-`emit()`.
+- **Canonical schema:** [`theme-events.schema.json`](./theme-events.schema.json) in this
+  directory (JSON Schema 2020-12). Its `$id` is
+  `https://schemas.revenexx.com/theme-events.schema.json`.
+- **Shipped with the package:** `@revenexx/tag-manager-nuxt/contract/theme-events.schema.json`.
+- **Emitter, validator and types:** `@revenexx/tag-manager-nuxt/events`. It has no Nuxt or Vue
+  dependency and no side effects, so a theme can emit without installing the Tag Manager
+  module.
 
-## Envelope
+Event names follow GA4 because most other vendors map onto it. The B2B events GA4 has no name
+for (quotes, order lists, punchout) are added.
+
+## The envelope
+
+One JSON object per event:
 
 ```json
 {
   "schema": "theme-events/1",
   "event": "add_to_cart",
-  "event_id": "9b0c3f0e-…",
+  "event_id": "9b0c3f0e-5c1e-4d43-9c6b-2a8b9d1f7e10",
   "occurred_at": "2026-10-03T09:12:44.120Z",
-  "market": "de", "locale": "de-DE", "currency": "EUR",
-  "page": { "path": "/p/schuetz-ls-16a", "type": "product" },
+  "market": "de",
+  "locale": "de-DE",
+  "currency": "EUR",
+  "page": { "path": "/p/ls-b16-1p", "type": "product" },
   "customer": { "authenticated": true, "b2b": true },
   "ecommerce": {
-    "value_net": 41.80, "value_gross": 49.74,
-    "items": [ { "sku": "LS-B16-1P", "name": "Leitungsschutzschalter B16 1-polig",
-                 "brand": "Hager", "category_path": ["Installation", "Schutzgeräte"],
-                 "price_net": 4.18, "price_gross": 4.97, "quantity": 10, "list_position": 3 } ]
+    "value_net": 41.80,
+    "value_gross": 49.74,
+    "items": [{
+      "sku": "LS-B16-1P",
+      "name": "Circuit breaker B16 1-pole",
+      "brand": "Hager",
+      "category_path": ["Installation", "Protective devices"],
+      "price_net": 4.18,
+      "price_gross": 4.97,
+      "quantity": 10,
+      "list_position": 3
+    }]
   }
 }
 ```
 
-- `event_id` is a UUID v4 — except `purchase`, where it **is** the `transaction_id`, so the
-  emitter and any vendor can drop a repeat of the same order.
-- `page.path` never carries a query string or fragment; the emitter strips them.
-- `customer` is exactly two booleans. The schema closes every object, so a forbidden field is a
-  validation error rather than a convention.
-- Amounts: `price_net`/`price_gross` per unit, `null` when the price is on request (never 0);
-  `value_net`/`value_gross` for the event. Which of the two a tag receives is the Tag Manager
-  setting `event_price_basis` (B2B: net).
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `schema` | `"theme-events/1"` | ✓ | The contract version. A listener reads only versions it supports. |
+| `event` | one of the [18 event names](#vocabulary-v1) | ✓ | What happened. |
+| `event_id` | string, 1–128 | ✓ | A UUID v4, except for `purchase`, where it **is** the `transaction_id`, so the emitter and any vendor can drop a repeat of the same order. |
+| `occurred_at` | RFC 3339 date-time | ✓ | When it happened, UTC, by the browser's clock. |
+| `market` | `^[a-z0-9][a-z0-9_-]*$`, ≤ 64 | ✓ | The market code the storefront runs in. |
+| `locale` | BCP 47 (`de-DE`) | ✓ | The UI locale. |
+| `currency` | ISO 4217 (`EUR`) | ✓ | The currency of every amount in this envelope. |
+| `page` | `{ path, type }` | ✓ | `path` is the route path **without** query string or fragment. `type` is one of `home`, `category`, `search`, `product`, `cart`, `checkout`, `confirmation`, `account`, `quote`, `orderlist`, `punchout`, `login`, `register`, `content`, `other`. |
+| `customer` | `{ authenticated, b2b }` | ✓ | Exactly two booleans: whether the visitor is signed in and whether they buy for a business. Nothing else about the visitor, ever. |
+| `ecommerce` | object | per event | The commerce part, see below. |
+| `search` | `{ search_term, results_count }` | `search` | `search_term` ≤ 256, `results_count` integer ≥ 0. |
+| `form` | `{ form_code, outcome? }` | `form_submit` | `form_code` is the form's code (its slug), never a field value. `outcome` is `accepted` or `rejected`. |
+| `auth` | `{ method }` | `login`, `sign_up` | `password`, `magic_link`, `otp`, `sso`, `punchout` or `other`. |
+| `punchout` | `{ protocol }` | `punchout_transfer` | `oci` or `cxml`. |
+
+**`ecommerce`**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | item[], ≤ 200 | The product lines. |
+| `value_net` / `value_gross` | number ≥ 0 or `null` | Sum of the event's lines (or of the order) before / including tax. Must be numbers for `purchase`. |
+| `tax` | number ≥ 0 | Tax amount of the order. |
+| `shipping` | number ≥ 0 | Shipping cost of the order, net. |
+| `transaction_id` | string, 1–128 | The order number the platform issued. Never the buyer's own purchase-order reference. |
+| `coupon` | string ≤ 64 | The promotion code applied. |
+| `list_id` | string, 1–128 | A stable id of the list shown: `category:<slug-path>`, `search`, `cross-sell`, `orderlist:<id>`. |
+| `list_name` | string ≤ 256 | The list as a person reads it. |
+| `shipping_tier` | string, 1–64 | The chosen shipping method code. |
+| `payment_type` | string, 1–64 | The chosen payment method code. |
+
+**Item**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `sku` | string, 1–128 | ✓ | The article number. Every vendor mapping uses it as the product id. |
+| `name` | string, 1–256 | ✓ | The product name as the storefront shows it. |
+| `quantity` | number > 0 | ✓ | Units. It is a number, not an integer, because cable is sold by the metre. |
+| `brand` | string ≤ 128 | | Manufacturer or brand. |
+| `category_path` | string[], ≤ 5 | | Category labels from the root down. Mappings truncate from the end (GA4 takes 5, etracker 4). |
+| `variant` | string ≤ 128 | | The chosen variant as a label. |
+| `price_net` / `price_gross` | number ≥ 0 or `null` | | Unit price before / including tax. `null` when the price is unknown (on request), never `0`. |
+| `list_position` | integer ≥ 1 | | 1-based position in the list the item was shown in. |
+| `list_id` | string ≤ 128 | | The list the item was shown in, when it differs from the event's list. |
+
+Every object in the schema is **closed** (`additionalProperties: false`), so an unexpected field
+is a validation error, not a convention. Which of net or gross a vendor receives is a listener
+setting. The Tag Manager calls it `event_price_basis`, and B2B shops typically use net.
 
 ## Vocabulary v1
 
-| Event | Required | etracker (#59) | GA4 / Meta |
-| --- | --- | --- | --- |
-| `page_view` | `page.type` | page view (by the loader) | `page_view` / `PageView` |
-| `view_item_list` | `ecommerce.list_id`, `items` | `viewProductList` (categorylist) | same / – |
-| `search` | `search.search_term`, `search.results_count` | `viewProductList` (searchlist) | `search` / `Search` |
-| `select_item` | exactly one item | – | same / – |
-| `view_item` | exactly one item | `viewProduct` | same / `ViewContent` |
-| `add_to_cart` | `items` | `insertToBasket` | same / `AddToCart` |
-| `remove_from_cart` | `items` | `removeFromBasket` | same / – |
-| `view_cart` | `items` (may be empty) | – | same / – |
-| `begin_checkout` | `items` | – | same / `InitiateCheckout` |
-| `add_shipping_info` | `shipping_tier`, `items` | – | same / – |
-| `add_payment_info` | `payment_type`, `items` | – | same / `AddPaymentInfo` |
-| `purchase` | `transaction_id`, `value_net`, `value_gross`, `tax`, `shipping`, `items` | `order` (status sale) | same / `Purchase` |
-| `request_quote` (B2B) | `items` | `order` (status lead) | `generate_lead` / `Lead` |
-| `add_to_orderlist` (B2B) | `items` | `insertToWatchlist` | `add_to_wishlist` / `AddToWishlist` |
-| `punchout_transfer` (B2B) | `value_net`, `value_gross`, `items`, `punchout.protocol` | `order` (status lead) | `purchase` with `punchout: true` |
-| `form_submit` | `form.form_code` | – | `generate_lead` / `Lead` |
-| `login`, `sign_up` | `auth.method` | – | same / `CompleteRegistration` |
+| Event | Required besides the envelope | Typical source | Default etracker | Default GA4 / Meta |
+| --- | --- | --- | --- | --- |
+| `page_view` | `page.type` | every navigation | page view (by the loader) | `page_view` / `PageView` |
+| `view_item_list` | `ecommerce.list_id`, ≥ 1 item | category listing | `viewProductList` (categorylist) | same / – |
+| `search` | `search.search_term`, `search.results_count` | search results | `viewProductList` (searchlist) | `search` / `Search` |
+| `select_item` | exactly 1 item | click on a product card | – | same / – |
+| `view_item` | exactly 1 item | product detail page | `viewProduct` | same / `ViewContent` |
+| `add_to_cart` | ≥ 1 item | cart add succeeded | `insertToBasket` | same / `AddToCart` |
+| `remove_from_cart` | ≥ 1 item | cart line removed or reduced | `removeFromBasket` | same / – |
+| `view_cart` | `items` (may be empty) | cart page | – | same / – |
+| `begin_checkout` | ≥ 1 item | checkout opened | – | same / `InitiateCheckout` |
+| `add_shipping_info` | `shipping_tier`, ≥ 1 item | shipping method chosen | – | same / – |
+| `add_payment_info` | `payment_type`, ≥ 1 item | payment method chosen | – | same / `AddPaymentInfo` |
+| `purchase` | `transaction_id`, `value_net`, `value_gross`, `tax`, `shipping`, ≥ 1 item | order confirmation | `order` (status `sale`) | same / `Purchase` |
+| `request_quote` (B2B) | ≥ 1 item | quote requested | `order` (status `lead`) | `generate_lead` / `Lead` |
+| `add_to_orderlist` (B2B) | ≥ 1 item | saved to an order list | `insertToWatchlist` | `add_to_wishlist` / `AddToWishlist` |
+| `punchout_transfer` (B2B) | `value_net`, `value_gross`, ≥ 1 item, `punchout.protocol` | basket handed back to the buyer's procurement system | `order` (status `lead`) | `purchase` with `punchout: true` |
+| `form_submit` | `form.form_code` | a form was submitted | – | `generate_lead` / `Lead` |
+| `login`, `sign_up` | `auth.method` | sign-in / registration succeeded | – | same / `CompleteRegistration` |
 
-The default vendor mappings are served by the Tag Manager app (`GET /tag-manager/registry`)
-and frozen into each published container, so a tenant can override one mapping per tag.
+The "default" columns describe the mappings the revenexx Tag Manager app suggests. They are
+frozen into each published container, and a merchant can override them per tag, so the
+contract itself does not fix any vendor call.
 
-## Forbidden: personal data
+## No personal data
 
-No email, name, phone, customer number, customer/contact/organization/user id, company name,
-address, postal code, city, IP or VAT id — anywhere. The list is in the schema as
-`x-revenexx-forbidden-fields` and in the validator's error messages. The emitter additionally
-replaces a search term that looks like an email address or a phone number by `[redacted]`.
-Enhanced Conversions and customer matching are out of scope for v1 for exactly this reason.
+The contract carries **no personal data**, by construction:
+
+- `customer` is two booleans and nothing else.
+- Every object is closed, so nothing can ride along on an item or the envelope.
+- These field names are refused anywhere, and the validator names them in its error message
+  (the list is also in the schema as `x-revenexx-forbidden-fields`): `email`, `e_mail`,
+  `mail`, `name_first`, `first_name`, `last_name`, `full_name`, `phone`, `telephone`,
+  `mobile`, `customer_number`, `customer_id`, `contact_id`, `organization_id`, `user_id`,
+  `company`, `company_name`, `street`, `address`, `postal_code`, `zip`, `city`, `ip`,
+  `ip_address`, `birthdate`, `vat_id`.
+- The emitter scrubs the two places where a visitor's own typing reaches an envelope, whether
+  or not validation is on: it strips a `page.path` of its query and fragment, and it replaces
+  a `search_term` that looks like an email address or a phone/customer number (seven or more
+  digits) with `[redacted]`.
+
+Features that need personal data, such as Enhanced Conversions or customer matching, are out
+of scope for `theme-events/1` for exactly this reason.
 
 ## Transport
 
+An envelope travels two ways at once, under one name:
+
+| Channel | Listener |
+| --- | --- |
+| Nuxt runtime hook `revenexx:event` | Nuxt modules: `nuxtApp.hook('revenexx:event', envelope => …)` |
+| DOM event `revenexx:event` on `window` | anything else: `window.addEventListener('revenexx:event', e => e.detail)` |
+
+A listener that hears both, like the Tag Manager, drops the second copy by `event_id`.
+
+## Emitting from a theme
+
 ```ts
-// in @revenexx/cover — no Tag Manager module needed for this import
+// plugins/theme-events.client.ts — no Tag Manager module needed for this import
 import { createThemeEvents } from '@revenexx/tag-manager-nuxt/events'
 
-const events = createThemeEvents({
-  context: () => ({ market, locale, currency, page: { path: route.path, type }, customer: { authenticated, b2b } }),
-  callHook: (name, envelope) => nuxtApp.callHook(name, envelope),   // → Nuxt modules
-  validate: import.meta.dev,                                          // dev: invalid envelopes are dropped + logged
+export default defineNuxtPlugin((nuxtApp) => {
+  const route = useRoute()
+  const events = createThemeEvents({
+    context: () => ({
+      market: 'de',
+      locale: 'de-DE',
+      currency: 'EUR',
+      page: { path: route.path, type: 'other' },
+      customer: { authenticated: false, b2b: false },
+    }),
+    callHook: (name, envelope) => nuxtApp.callHook(name, envelope),
+    validate: import.meta.dev, // in development: invalid envelopes are logged and dropped
+  })
+  return { provide: { themeEvents: events } }
 })
-events.emit('add_to_cart', { ecommerce: { items } })
-// → nuxtApp.callHook('revenexx:event', envelope)
-// → window.dispatchEvent(new CustomEvent('revenexx:event', { detail: envelope }))  (theme extensions, ADR-0111)
 ```
 
-The subpath imports nothing from Nuxt or Vue and has no side effect, which a test asserts.
+```ts
+const { $themeEvents } = useNuxtApp()
+$themeEvents.emit('add_to_cart', { ecommerce: { items: [{ sku: 'LS-B16-1P', name: 'Circuit breaker B16', price_net: 4.18, price_gross: 4.97, quantity: 1 }] } })
+// → nuxtApp.callHook('revenexx:event', envelope)
+// → window.dispatchEvent(new CustomEvent('revenexx:event', { detail: envelope }))
+```
 
-## Emission points in `@revenexx/cover` (read-only survey, 2026-10-03)
+`createThemeEvents(options)`:
 
-Paths are relative to `cover/packages/`. Line numbers are approximate. None of this is wired
-yet — it is RAD-183. Today cover contains no tracking code at all; the only mention is the
-comment in `cover-theme/app/composables/useBlokkliPreview.ts:2` that analytics must
-early-return when `isPreview.value` is true. Every emission below must honour it: the blökkli
-editor shells call `cart.addItem` to seed sample carts
-(`cover-theme/app/components/blokkli/cart/cart.vue:54`, `checkout/checkout.vue:74`,
-`checkout/confirmation/index.vue:52`).
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `context` | `() => ThemeEventContext` | required | Read on every `emit`: `market`, `locale`, `currency`, `page`, `customer`. |
+| `callHook` | `(name, envelope) => unknown` | none | Usually `(n, e) => nuxtApp.callHook(n, e)`. Omit outside Nuxt. |
+| `target` | `{ dispatchEvent } \| null` | `window` in a browser | Where the DOM event is dispatched. `null` disables it. |
+| `validate` | `boolean` | `false` | Validate every envelope. An invalid one is not emitted. |
+| `onInvalid` | `'warn' \| 'throw'` | `'warn'` | With `validate`: log and drop, or throw a `TypeError`. |
+| `storage` | `StorageLike \| null` | `sessionStorage` if usable | Where emitted `purchase` transaction ids are remembered. |
+| `uuid`, `now`, `logger` | functions | `crypto.randomUUID`, `new Date`, `console` | Injection points for tests. |
 
-| Event | Where | Notes |
+`emit(event, data?)` returns the envelope that went out, or `null` when nothing was emitted
+(invalid in validate mode, or a `purchase` already emitted for that `transaction_id`). `data`
+may carry `ecommerce`, `search`, `form`, `auth`, `punchout` and a `page` that overrides the
+context's page.
+
+**Purchase dedupe.** A `purchase` takes its `transaction_id` as `event_id` and is emitted once
+per transaction and browser session, even if the confirmation page is reloaded.
+
+## Validating
+
+```ts
+import { validateThemeEvent, assertThemeEvent } from '@revenexx/tag-manager-nuxt/events'
+
+validateThemeEvent(envelope)  // string[]: every violation, empty when valid
+assertThemeEvent(envelope)    // throws a TypeError listing every violation
+```
+
+The bundled validator has no dependencies and is meant for the browser. The repository's tests
+run every fixture through it **and** through a full JSON Schema 2020-12 validator (Ajv), and
+fail when the two disagree. Server-side, you can validate against the schema itself:
+
+```ts
+import Ajv2020 from 'ajv/dist/2020'
+import addFormats from 'ajv-formats'
+import schema from '@revenexx/tag-manager-nuxt/contract/theme-events.schema.json' with { type: 'json' }
+
+const validate = addFormats(new Ajv2020({ allErrors: true })).compile(schema)
+validate(envelope) // boolean, details in validate.errors
+```
+
+## Exports of `@revenexx/tag-manager-nuxt/events`
+
+| Export | Kind | Description |
 | --- | --- | --- |
-| `page_view` | new client plugin `cover/app/plugins/theme-events.client.ts` (pattern: `auth-init.client.ts`), `router.afterEach` / `page:finish` | Pages are blökkli-authored; the router hook is the only uniform point. Skip `/admin/**`, `/preview/**`. |
-| `view_item_list` | `cover/app/composables/useProductListing.ts` ~:200 (watch on `products`), called from `useCategoryListing.ts:17` | `list_id` = `category:<categorySlug>[/<subcategorySlug>]`; prices arrive later via offers. |
-| `search` | `cover/app/composables/useSearchListing.ts:24` (query :34, listing :56) | Watch `(query, found)`, not keystrokes; skip `q=*` (catalog). |
-| `select_item` | `cover/app/components/product/card/Compact.vue:64` and `:85` | List id/index must be provided by the listing (`cover-theme/app/composables/useListingContext.ts`). |
-| `view_item` | page `cover-theme/app/pages/category/[category]/[...rest].vue:35` after `ready()` (data: `cover/app/composables/useProduct.ts:12`, offer :60) | Not in the composable: `product_swiper` also calls it. Brand = `manufacturer`. |
-| `add_to_cart` | `cover/app/composables/useCartStore.ts:267` `addItem` returns boolean → pinia `cart.$onAction(({ name, args, after }) => after(ok => ok && emit(…)))` in the new plugin | Emit only when `after` sees `true` (AC-2). Quantity >1 on the detail page arrives as `addItem` + `updateQuantityByKey` (`ProductDetailAddToCart.vue:99/:118`) — diff quantities. |
-| `remove_from_cart` | `useCartStore.ts:308` `removeItem`, `:315` `updateQuantity` (down), `:346` `removeByKeys`, `:355` `updateQuantityByKey` (down) via the same `$onAction` | Never `clearCart` (`:333`) — it runs after checkout, login, logout and quote requests. |
-| `view_cart` | `cover-theme/app/pages/cart.vue` / shell `cover-theme/app/components/blokkli/cart/cart.vue` | Totals in `useCartStore`. |
-| `begin_checkout` | shell `cover-theme/app/components/blokkli/checkout/checkout.vue:30` on mount | `useCheckoutOnePage` (`cover/app/composables/useCheckoutOnePage.ts:54`) is shared state — do not emit inside it. |
-| `add_shipping_info` | `cover/app/components/checkout/onepage/CheckoutDeliverySection.vue:147` | Or a watch on `form.deliveryMethod`. |
-| `add_payment_info` | `cover/app/components/checkout/onepage/CheckoutPaymentSection.vue` ~:87 `selectMethod` | Not the auto-default at :68/:70. |
-| `purchase` | capture items in `useCheckoutOnePage.ts:314` `submitOrder` before `cart.clearCart()` (:352); emit on `cover-theme/app/pages/checkout/confirmation.vue` with data from `cover/app/composables/useCheckoutConfirmation.ts:11` | `transaction_id` = `orderId`. The recap lacks tax/shipping/subtotal — extend it from `AccountOrder` (`cover/app/interfaces/account/order-list.ts:33`). `orderNumber` there is the buyer's PO, not the order id. Not for `type=approval|requisition`. Dedupe is the emitter's. |
-| `request_quote` | `cover/app/composables/useAccountQuotes.ts:74` `useQuoteRequest().request()` (:77) after success | Caller: `cover/app/components/cart/quote/CartQuoteRequestModal.vue:48`. |
-| `add_to_orderlist` | `cover/app/components/cart/actions/CartSaveToListModal.vue:81` `save()` (PUT :88 / POST :96) | |
-| `punchout_transfer` | `cover/app/pages/punchout/transfer.vue` `onMounted` ~:50, before `form.submit()` ~:66 | Skip when `replayed` or a back-channel transfer. `protocol` from `usePunchoutVisit`. |
-| `form_submit` | `cover/app/components/RevenexxForm.vue:186` `onSubmit`, success branch ~:205 | `form_code` = `props.slug`; never field values. |
-| `login` | `cover/app/composables/useAuthStore.ts:115` `login()`, `:167` `confirmSignInMail` | `method` password / magic_link / otp. |
-| `sign_up` | `useAuthStore.ts:95` `register()` | |
+| `createThemeEvents` | function | The emitter. |
+| `scrubThemeEvent` | function | The privacy pass the emitter applies (path, search term). |
+| `validateThemeEvent`, `assertThemeEvent` | functions | The validator. |
+| `THEME_EVENTS_SCHEMA`, `THEME_EVENTS_SCHEMA_ID` | constants | `'theme-events/1'`, the schema `$id`. |
+| `THEME_EVENT_HOOK`, `THEME_EVENT_DOM` | constants | `'revenexx:event'`. |
+| `THEME_EVENT_NAMES`, `B2B_EVENT_NAMES`, `PAGE_TYPES`, `AUTH_METHODS`, `PUNCHOUT_PROTOCOLS`, `FORBIDDEN_FIELDS` | constants | The vocabulary. |
+| `ECOMMERCE_REQUIREMENTS`, `BLOCK_REQUIREMENTS` | constants | The per-event requirements. |
+| types | — | `ThemeEventEnvelope`, `ThemeEventName`, `ThemeEventItem`, `ThemeEventEcommerce`, `ThemeEventPage`, `ThemeEventCustomer`, `ThemeEventContext`, `ThemeEventData`, `ThemeEventSearch`, `ThemeEventForm`, `ThemeEventAuth`, `ThemeEventPunchout`, `PageType`, `AuthMethod`, `PunchoutProtocol`, `ThemeEvents`, `ThemeEventsOptions`, `StorageLike` |
 
-Data gaps the emission work has to close: `CartItem` (`cover/app/interfaces/cart-item.ts:11`)
-has no brand and only category slugs, and one `price` whose basis depends on
-`useShopSettings().taxIncludedPrices` (net and gross have to be derived with `taxRate`);
-`ProductList` (`cover/app/interfaces/product-list.ts:10`) has no brand; list id and position
-are not passed into product cards.
+## Versioning
+
+A breaking change to the vocabulary or the envelope means a new `schema` value
+(`theme-events/2`). Listeners read only the versions they support.

@@ -1,18 +1,25 @@
 {
   "name": "@revenexx/tag-manager-nuxt",
   "version": "0.0.0",
-  "description": "Nuxt module for the revenexx Tag Manager: loads the published tag container, gates every tag through a consent provider, and maps the revenexx theme event contract onto vendor calls \u2014 built on @nuxt/scripts.",
+  "description": "Consent-gated tag manager for Nuxt, built on @nuxt/scripts: loads the tags published in the revenexx Tag Manager only with the visitor's consent and maps one vendor-neutral theme event stream (GA4-style, plus B2B events, no personal data) onto GA4, GTM, Meta, etracker, HubSpot and more.",
   "keywords": [
     "nuxt",
     "nuxt-module",
+    "nuxt4",
     "nuxt-scripts",
     "tag-manager",
     "consent",
+    "privacy",
     "analytics",
+    "ecommerce-tracking",
+    "ga4",
+    "google-tag-manager",
+    "meta-pixel",
     "etracker",
     "hubspot",
-    "ga4",
+    "matomo",
     "theme-events",
+    "b2b",
     "revenexx"
   ],
   "homepage": "https://github.com/revenexx/tag-manager-nuxt#readme",
@@ -50,7 +57,8 @@
   },
   "files": [
     "dist",
-    "contract"
+    "contract",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "nuxt-module-build build",

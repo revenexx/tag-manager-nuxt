@@ -1,6 +1,21 @@
-# @revenexx/tag-manager-nuxt — how it works
+# @revenexx/tag-manager-nuxt: documentation
 
-## The pieces
+Start with the [README](../README.md): installation, configuration, loading rules, the consent
+provider, supported tags, `useTagManager()`, the server route, preview and CSP.
+
+| Page | What it covers |
+| --- | --- |
+| [Cookbook](recipes.md) | with and without the consent module, your own consent provider, emitting theme events, `page_view` per navigation, e-commerce and B2B events, etracker and HubSpot, unknown vendors, preview, CSP |
+| [Theme event contract](../contract/README.md) | `theme-events/1`: envelope, all 18 events, the no-personal-data rule, transport, emitter and validator API (ships with the package) |
+| [Keeping schema and code in step](contract.md) | how the JSON Schema, the vocabulary and the validator are held together by tests |
+| [Specs](../specs/README.md) | what the loader and the contract promise, each criterion bound to a test |
+| [Cover emission points](cover-emission-points.md) | internal: where `@revenexx/cover` emits each event |
+
+The rest of this page is the maintainer's view: how the pieces fit together, and why.
+
+## How it works
+
+### The pieces
 
 | Piece | What it does |
 | --- | --- |
@@ -12,7 +27,7 @@
 | `src/runtime/core/adapters.ts` | One adapter per registry key: theme event + event-map entry → the vendor's own call. |
 | `src/runtime/events/` (+ `src/events.ts`) | The contract's emitter and validator — the `/events` subpath. |
 
-## Decisions
+### Decisions
 
 1. **The consent provider is the only coupling to the consent module.** No import of
    `@revenexx/consent-manager-nuxt`; `nuxtApp.$consentProvider` with the shared-contract shape.
@@ -34,14 +49,14 @@
    `tag-manager.delivery.preview/{token}`, uncached at both the gateway and Nitro, and turns on
    console logging prefixed `[revenexx tag-manager]`.
 
-## What @nuxt/scripts brings and what this adds
+### What @nuxt/scripts brings and what this adds
 
 @nuxt/scripts brings the loader, the consent trigger shape and the registry composables for
 GTM, GA4, Meta, LinkedIn, Bing UET, TikTok, Matomo, Hotjar, Clarity, Intercom and Crisp. This
 module adds etracker (with etCommerce), HubSpot and — because 1.3.x has none — Tawk.to, the
 container from the API instead of `nuxt.config`, and the theme events.
 
-## first_party_mode
+### first_party_mode
 
 The tenant setting can switch first-party proxying OFF per tag at runtime
 (`scriptOptions.proxy = false`). Switching it ON needs the registry key enabled in the theme's

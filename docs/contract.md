@@ -1,7 +1,9 @@
 # The theme event contract
 
-The contract, its vocabulary, the forbidden fields, the transport and the emission points in
-`@revenexx/cover` are documented next to the schema itself: [`contract/README.md`](../contract/README.md).
+The contract, its vocabulary, the forbidden fields and the transport are documented next to
+the schema itself: [`contract/README.md`](../contract/README.md), which ships with the package.
+Where `@revenexx/cover` has to emit each event is an internal note:
+[cover-emission-points.md](cover-emission-points.md).
 
 How this repository keeps the schema and the code from drifting:
 
