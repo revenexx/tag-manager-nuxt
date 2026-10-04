@@ -1,6 +1,6 @@
 {
   "name": "@revenexx/tag-manager-nuxt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Consent-gated tag manager for Nuxt, built on @nuxt/scripts: loads the tags published in the revenexx Tag Manager only with the visitor's consent and maps one vendor-neutral theme event stream (GA4-style, plus B2B events, no personal data) onto GA4, GTM, Meta, etracker, HubSpot and more.",
   "keywords": [
     "nuxt",
