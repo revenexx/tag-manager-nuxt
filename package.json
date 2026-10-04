@@ -69,6 +69,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "nuxi prepare playground && vue-tsc --noEmit",
+    "test:dist": "tsc -p test/dist/tsconfig.json",
     "prepack": "pnpm build",
     "changeset": "changeset",
     "version": "changeset version",

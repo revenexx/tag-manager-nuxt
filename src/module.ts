@@ -1,7 +1,12 @@
-import { addImports, addPlugin, addServerHandler, createResolver, defineNuxtModule, hasNuxtModule, useLogger } from '@nuxt/kit'
+import { addImports, addPlugin, addServerHandler, addTemplate, createResolver, defineNuxtModule, hasNuxtModule, useLogger } from '@nuxt/kit'
 import { defu } from 'defu'
 import type { ThemeEventEnvelope } from './runtime/events/types'
 import type { ConsentProvider } from './runtime/core/types'
+import { DEFAULT_EDITOR_HOSTS, DEFAULT_EDITOR_PATHS } from './runtime/core/context'
+import { ADDED_REGISTRY_SCRIPTS } from './runtime/registry/scripts'
+
+export type * from './runtime/types'
+export * from './runtime/registry/scripts'
 
 /**
  * `@revenexx/tag-manager-nuxt`
@@ -19,7 +24,11 @@ import type { ConsentProvider } from './runtime/core/types'
 export interface ModuleOptions {
   /** Turn the module off without removing it. */
   enabled: boolean
-  /** Path of the Nitro route that serves the container to the app. */
+  /**
+   * Path of the Nitro route that serves the container to the app. Build time
+   * only: the route is registered when the app is built, so this is not a
+   * runtime config value and no environment variable changes it.
+   */
   endpoint: string
   /** Gateway base URL. Runtime: NUXT_TAG_MANAGER_API_URL. */
   apiUrl: string
@@ -33,19 +42,26 @@ export interface ModuleOptions {
   previewParam: string
   /** Log every decision and event to the console, as preview mode does. */
   debug: boolean
+  /** Hosts that count as editor context: no tag loads. `*.x` matches every subdomain. Default `['*.theme.rvnxx.site']`. */
+  editorHosts: string[]
+  /** Path prefixes that count as editor/preview context: no tag loads. Default `['/admin', '/preview']`. */
+  editorPaths: string[]
 }
 
-export interface ModuleRuntimeConfig {
+/** `runtimeConfig.tagManager` — server only. */
+export interface TagManagerRuntimeConfig {
   apiUrl: string
   tenant: string
   apiKey: string
 }
 
-export interface ModulePublicRuntimeConfig {
-  endpoint: string
+/** `runtimeConfig.public.tagManager`. */
+export interface TagManagerPublicRuntimeConfig {
   marketCookie: string
   previewParam: string
   debug: boolean
+  editorHosts: string[]
+  editorPaths: string[]
 }
 
 declare module '#app' {
@@ -59,19 +75,25 @@ declare module '#app' {
 
 declare module '@nuxt/schema' {
   interface RuntimeConfig {
-    tagManager: ModuleRuntimeConfig
+    tagManager: TagManagerRuntimeConfig
   }
   interface PublicRuntimeConfig {
-    tagManager: ModulePublicRuntimeConfig
+    tagManager: TagManagerPublicRuntimeConfig
   }
 }
 
-/** Registry scripts this module adds to @nuxt/scripts. */
-export const ADDED_REGISTRY_SCRIPTS = [
-  { registryKey: 'etracker', label: 'etracker', category: 'analytics', file: 'etracker', name: 'useScriptEtracker' },
-  { registryKey: 'hubspot', label: 'HubSpot', category: 'marketing', file: 'hubspot', name: 'useScriptHubspot' },
-  { registryKey: 'tawkTo', label: 'Tawk.to', category: 'support', file: 'tawk-to', name: 'useScriptTawkTo' },
-] as const
+interface RegistryImport { name: string, from: string }
+
+/** The build-time values the plugin reads: the route path and where each added registry composable comes from. */
+function buildTemplate(endpoint: string, sources: Record<string, RegistryImport>): string {
+  const keys = Object.keys(sources)
+  return [
+    ...keys.map((key, i) => `import { ${sources[key]!.name} as _r${i} } from ${JSON.stringify(sources[key]!.from)}`),
+    `export const endpoint = ${JSON.stringify(endpoint)}`,
+    `export const addedRegistry = { ${keys.map((key, i) => `${JSON.stringify(key)}: _r${i}`).join(', ')} }`,
+    '',
+  ].join('\n')
+}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -88,6 +110,8 @@ export default defineNuxtModule<ModuleOptions>({
     marketCookie: 'cover-market',
     previewParam: 'rvx_tm_preview',
     debug: false,
+    editorHosts: DEFAULT_EDITOR_HOSTS,
+    editorPaths: DEFAULT_EDITOR_PATHS,
   },
   setup(options, nuxt) {
     const logger = useLogger('tag-manager')
@@ -100,17 +124,45 @@ export default defineNuxtModule<ModuleOptions>({
 
     // etracker, HubSpot and Tawk.to are not in the @nuxt/scripts registry (1.3.x):
     // add them the way a Nuxt Image provider is added — as a registry entry.
+    // A key @nuxt/scripts already ships keeps its own entry, and then ITS
+    // composable is the one the tag runtime calls too: one source per key.
+    const sources: Record<string, RegistryImport> = Object.fromEntries(ADDED_REGISTRY_SCRIPTS.map(s => [
+      s.registryKey, { name: s.name, from: resolve(`./runtime/registry/${s.file}`) },
+    ]))
     nuxt.hook('scripts:registry' as never, ((registry: Array<Record<string, unknown>>) => {
       for (const script of ADDED_REGISTRY_SCRIPTS) {
-        if (registry.some(r => r.registryKey === script.registryKey)) continue
+        const existing = registry.find(r => r.registryKey === script.registryKey)
+        const upstream = existing?.import as RegistryImport | undefined
+        if (existing) {
+          if (upstream?.name && upstream.from) sources[script.registryKey] = { name: upstream.name, from: upstream.from }
+          continue
+        }
         registry.push({
           registryKey: script.registryKey,
           label: script.label,
           category: script.category,
-          import: { name: script.name, from: resolve(`./runtime/registry/${script.file}`) },
+          import: sources[script.registryKey],
         })
       }
     }) as never)
+
+    // Read when the templates are written, after modules:done has run the hook above.
+    const template = addTemplate({
+      filename: 'tag-manager/build.mjs',
+      write: true,
+      getContents: () => buildTemplate(options.endpoint, sources),
+    })
+    addTemplate({
+      filename: 'tag-manager/build.d.mts',
+      write: true,
+      getContents: () => [
+        'type RegistryComposable = (options: Record<string, unknown>) => { onLoaded: (cb: () => void) => void }',
+        'export declare const endpoint: string',
+        'export declare const addedRegistry: Record<string, RegistryComposable>',
+        '',
+      ].join('\n'),
+    })
+    nuxt.options.alias['#tag-manager/build'] = template.dst
 
     nuxt.options.runtimeConfig.tagManager = defu(nuxt.options.runtimeConfig.tagManager, {
       apiUrl: options.apiUrl,
@@ -118,10 +170,11 @@ export default defineNuxtModule<ModuleOptions>({
       apiKey: options.apiKey,
     })
     nuxt.options.runtimeConfig.public.tagManager = defu(nuxt.options.runtimeConfig.public.tagManager, {
-      endpoint: options.endpoint,
       marketCookie: options.marketCookie,
       previewParam: options.previewParam,
       debug: options.debug,
+      editorHosts: options.editorHosts,
+      editorPaths: options.editorPaths,
     })
 
     addServerHandler({
@@ -130,10 +183,9 @@ export default defineNuxtModule<ModuleOptions>({
       handler: resolve('./runtime/server/routes/container.get'),
     })
     addPlugin(resolve('./runtime/plugin'))
-    addImports([
-      { name: 'useTagManager', from: resolve('./runtime/composables/useTagManager') },
-      // The registry composables this module adds, so a theme can also call them directly.
-      ...ADDED_REGISTRY_SCRIPTS.map(s => ({ name: s.name, from: resolve(`./runtime/registry/${s.file}`) })),
-    ])
+    // The added registry composables are auto-imported by @nuxt/scripts from
+    // their registry entries — not here, so a key it ships itself is not
+    // imported twice under one name.
+    addImports({ name: 'useTagManager', from: resolve('./runtime/composables/useTagManager') })
   },
 })

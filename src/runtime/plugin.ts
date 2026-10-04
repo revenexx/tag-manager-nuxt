@@ -27,21 +27,23 @@ import {
 } from '#imports'
 import type { Plugin } from '#app'
 import type { ThemeEventEnvelope } from './events/types'
-import { isEditorOrPreviewContext } from './core/context'
+import { DEFAULT_EDITOR_HOSTS, DEFAULT_EDITOR_PATHS, isEditorOrPreviewContext } from './core/context'
 import { createTagRuntime, LOG_PREFIX, MAX_BUFFERED_EVENTS } from './core/runtime'
 import type { TagRuntime } from './core/runtime'
 import { browserTiming } from './core/timing'
 import type { ConsentProvider, ContainerTag, DeliveredContainer } from './core/types'
 import { EMPTY_CONTAINER, isDeliveredContainer } from './core/types'
 import { CONTAINER_STATE_KEY } from './composables/useTagManager'
-import { useScriptEtracker } from './registry/etracker'
-import { useScriptHubspot } from './registry/hubspot'
-import { useScriptTawkTo } from './registry/tawk-to'
+// Build-time values: the container route as registered, and the composable of
+// each added registry key — @nuxt/scripts' own where it ships the key, this
+// module's otherwise. The same source the registry and auto-imports use.
+import { addedRegistry, endpoint } from '#tag-manager/build'
 
 type RegistryComposable = (options: Record<string, unknown>) => { onLoaded: (cb: () => void) => void }
 
 /** Registry key → composable. A key missing here is refused at publish by the app's registry. */
 const REGISTRY = {
+  ...addedRegistry,
   googleTagManager: useScriptGoogleTagManager,
   googleAnalytics: useScriptGoogleAnalytics,
   metaPixel: useScriptMetaPixel,
@@ -53,9 +55,6 @@ const REGISTRY = {
   clarity: useScriptClarity,
   intercom: useScriptIntercom,
   crisp: useScriptCrisp,
-  tawkTo: useScriptTawkTo,
-  etracker: useScriptEtracker,
-  hubspot: useScriptHubspot,
 } as unknown as Record<string, RegistryComposable>
 
 /** Config keys that would write Consent Mode defaults: the consent module owns those, never a tag. */
@@ -85,7 +84,7 @@ const tagManagerPlugin: Plugin = defineNuxtPlugin({
       try {
         const query: Record<string, string> = {}
         if (previewToken) query.preview = previewToken
-        const answer = await useRequestFetch()<unknown>(config?.endpoint || '/_tag-manager/container', { query })
+        const answer = await useRequestFetch()<unknown>(endpoint, { query })
         state.value = isDeliveredContainer(answer) ? answer : EMPTY_CONTAINER
       }
       catch {
@@ -98,7 +97,10 @@ const tagManagerPlugin: Plugin = defineNuxtPlugin({
     w.addEventListener('revenexx:event', (e: Event) => intake((e as CustomEvent<ThemeEventEnvelope>).detail))
 
     const debug = Boolean(config?.debug || state.value.container.preview)
-    const editorContext = isEditorOrPreviewContext(window.location.hostname, window.location.pathname)
+    const editorContext = isEditorOrPreviewContext(window.location.hostname, window.location.pathname, {
+      hosts: config?.editorHosts ?? DEFAULT_EDITOR_HOSTS,
+      paths: config?.editorPaths ?? DEFAULT_EDITOR_PATHS,
+    })
 
     const load = (tag: ContainerTag, trigger: Promise<void>): Promise<void> => {
       const scriptOptions: Record<string, unknown> = { trigger }

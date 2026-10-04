@@ -135,13 +135,15 @@ All options go under `tagManager` in `nuxt.config.ts`.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enabled` | `boolean` | `true` | `false` turns the module off completely: no route, no plugin, no `useTagManager`. |
-| `endpoint` | `string` | `'/_tag-manager/container'` | Path of the Nitro route the app reads the container from. The route is registered at build time, so set this in `nuxt.config`, not through runtime env. |
-| `apiUrl` | `string` | `'https://api.revenexx.com'` | Gateway base URL **without** `/v1`. Server-only. |
+| `endpoint` | `string` | `'/_tag-manager/container'` | Path of the Nitro route the app reads the container from. **Build time only**: the route is registered when the app is built and the plugin reads the same build-time value, so it is not runtime config and no environment variable changes it. |
+| `apiUrl` | `string` | `'https://api.revenexx.com'` | Gateway base URL, with or without a trailing `/v1`. Server-only. |
 | `tenant` | `string` | `''` | Tenant for local development, used when no brokered context arrives. Server-only. |
 | `apiKey` | `string` | `''` | Gateway API key for local development. Server-only, never sent to the browser. |
 | `marketCookie` | `string` | `'cover-market'` | Cookie that holds the active market code. |
 | `previewParam` | `string` | `'rvx_tm_preview'` | Query parameter that loads the unpublished draft container. |
 | `debug` | `boolean` | `false` | Log every load decision and every event to the console, prefixed `[revenexx tag-manager]`, as preview mode does. |
+| `editorHosts` | `string[]` | `['*.theme.rvnxx.site']` | Hosts that count as editor context: no tag loads. `*.example.com` matches every subdomain, anything else the exact host. Same option and default as the consent module's. |
+| `editorPaths` | `string[]` | `['/admin', '/preview']` | Path prefixes that count as editor/preview context: no tag loads. `/admin` matches `/admin` and `/admin/**`. Same option and default as the consent module's. |
 
 Which tags exist, what triggers them, how events map onto vendor calls, the price basis (net or
 gross), the GTM data-layer name and first-party proxying are **container settings** in the
@@ -173,6 +175,9 @@ matches, the route answers an empty container.
 | `NUXT_PUBLIC_TAG_MANAGER_MARKET_COOKIE` | `public.tagManager.marketCookie` | public |
 | `NUXT_PUBLIC_TAG_MANAGER_PREVIEW_PARAM` | `public.tagManager.previewParam` | public |
 | `NUXT_PUBLIC_TAG_MANAGER_DEBUG` | `public.tagManager.debug` | public |
+| `NUXT_PUBLIC_TAG_MANAGER_EDITOR_HOSTS`, `NUXT_PUBLIC_TAG_MANAGER_EDITOR_PATHS` | `public.tagManager.editorHosts` / `editorPaths` | public |
+
+`endpoint` has no environment variable: it is fixed at build time (see above).
 
 **Market.** The container is per market. The route takes the first valid code from: the
 `?market=` query, the `x-revenexx-market` header, the `marketCookie` cookie. Codes are
@@ -184,9 +189,10 @@ decides.
 
 A tag loads only if **all** of these hold:
 
-1. **Not an editor or preview context.** Hosts ending in `.theme.rvnxx.site` and the paths
-   `/admin`, `/admin/**`, `/preview`, `/preview/**` run no tag at all, with or without a
-   consent provider. This list is fixed in this module.
+1. **Not an editor or preview context.** The `editorHosts` and `editorPaths` options — by
+   default hosts ending in `.theme.rvnxx.site` and the paths `/admin`, `/admin/**`,
+   `/preview`, `/preview/**` — run no tag at all, with or without a consent provider. Keep
+   them in step with the consent module's options of the same name.
 2. **It is wanted on this page.** Either it has no triggers (it runs on every page), or a
    `page_view` trigger matches, or a `theme_event` trigger matches an event that just
    happened. Triggers can be narrowed by `path_prefixes`, `page_types` and `b2b`.
@@ -318,9 +324,11 @@ can use them directly:
 | `useScriptHubspot` | `id` (portal id), `region` (`'na1'` default, or `'eu1'`) |
 | `useScriptTawkTo` | `propertyId`, `widgetId` |
 
-They are added to the `@nuxt/scripts` registry through its `scripts:registry` hook. If a
-later `@nuxt/scripts` ships its own registry entry under the same key, that entry is left in
-place. The tag runtime keeps using this module's composables either way.
+They are added to the `@nuxt/scripts` registry through its `scripts:registry` hook and
+auto-imported from there. If a later `@nuxt/scripts` ships its own registry entry under the
+same key, **its** entry wins everywhere: the registry, the auto-imported composable and the
+composable the tag runtime calls. This module's implementation of that key is then unused, so
+there is always exactly one source per key.
 
 **First-party mode.** When the container's `first_party_mode` is off, every tag loads with
 `scriptOptions.proxy = false`. Turning proxying **on** also requires the registry key to be
@@ -395,7 +403,22 @@ import type {
 } from '@revenexx/tag-manager-nuxt/events'
 ```
 
-The package root exports `ModuleOptions`. The module augments `#app`: the runtime hook
+The package root exports the module's public types:
+
+```ts
+import type {
+  ModuleOptions, TagManagerRuntimeConfig, TagManagerPublicRuntimeConfig,
+  ConsentProvider, ConsentState, ConsentDecision,
+  DeliveredContainer, ContainerTag, ContainerTrigger, ContainerVariable, TriggerConditions,
+  EventMapEntry, TagManagerSettings, LoadTiming, PriceBasis,
+  TagRuntime, TagLoadState, TagLoader, UseTagManager, EditorContextOptions, AddedRegistryKey,
+} from '@revenexx/tag-manager-nuxt'
+import { ADDED_REGISTRY_SCRIPTS } from '@revenexx/tag-manager-nuxt' // a value: the registry keys this module adds
+```
+
+Runtime config is typed under the module's own key: `useRuntimeConfig().tagManager`
+(`TagManagerRuntimeConfig`, server only) and `useRuntimeConfig().public.tagManager`
+(`TagManagerPublicRuntimeConfig`). The module augments `#app`: the runtime hook
 `'revenexx:event'` is typed with `ThemeEventEnvelope`, and `NuxtApp.$consentProvider` is typed
 as optional.
 
@@ -431,7 +454,6 @@ as optional.
 - **`purchase` is sent once only.** That is intended: a `purchase` is deduplicated by
   `transaction_id` per browser session, so reloading the confirmation page does not count the
   order twice.
-- **Container requests go to `…/v1/v1/…`.** Set `apiUrl` without the `/v1` suffix.
 
 ## Related packages
 

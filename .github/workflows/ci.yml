@@ -23,3 +23,5 @@ jobs:
       - run: pnpm test
       - run: pnpm spec:check
       - run: pnpm build
+      # The published declarations, as a theme imports them (package root types, runtime config keys).
+      - run: pnpm test:dist

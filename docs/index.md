@@ -19,7 +19,7 @@ The rest of this page is the maintainer's view: how the pieces fit together, and
 
 | Piece | What it does |
 | --- | --- |
-| `src/module.ts` | Registers etracker, HubSpot and Tawk.to in the @nuxt/scripts registry (`scripts:registry` hook), the Nitro route, the plugin and `useTagManager`. |
+| `src/module.ts` | Registers etracker, HubSpot and Tawk.to in the @nuxt/scripts registry (`scripts:registry` hook) unless @nuxt/scripts ships the key itself, writes the `#tag-manager/build` template (the build-time `endpoint` and the one composable per added key the plugin calls), the Nitro route, the plugin and `useTagManager`. |
 | `src/runtime/server/routes/container.get.ts` | `GET /_tag-manager/container` → `tag-manager.delivery.container` (or `tag-manager.delivery.preview/{token}`). Nitro-cached 60 s per tenant + market; a preview request bypasses the cache. |
 | `src/runtime/server/utils/delivery.ts` | Who the route calls the gateway as: the brokered `x-revenexx-tenant` + `x-revenexx-context` (ADR-0062), else `tagManager.tenant/apiKey`, else cover's `revenexxTenant/revenexxApiKey`. Never another tenant's key. |
 | `src/runtime/plugin.ts` | Loads the container during SSR (so `hosts` exist for a CSP), then on `app:mounted` waits for `$consentProvider.ready` and starts the runtime. |
@@ -32,8 +32,9 @@ The rest of this page is the maintainer's view: how the pieces fit together, and
 1. **The consent provider is the only coupling to the consent module.** No import of
    `@revenexx/consent-manager-nuxt`; `nuxtApp.$consentProvider` with the shared-contract shape.
    No provider → only tags whose purpose is `necessary` load.
-2. **An editor or preview host runs no tag at all** (`*.theme.rvnxx.site`, `/admin/**`,
-   `/preview/**`), provider or not — the first conjunct of the gating rule.
+2. **An editor or preview host runs no tag at all** (`editorHosts`/`editorPaths`, by default
+   `*.theme.rvnxx.site`, `/admin/**`, `/preview/**`, as in the consent module), provider or
+   not — the first conjunct of the gating rule.
 3. **The gate is checked twice**: when a tag would load, and when each event happens. A
    buffered event was allowed when it happened and is delivered once the tag is ready.
 4. **Allowed → not allowed is a reload, and the consent module does it.** This module only
