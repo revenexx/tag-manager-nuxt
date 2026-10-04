@@ -5,16 +5,34 @@
 import type { ThemeEventEnvelope } from '../events/types'
 import type { ContainerTag, ContainerTrigger, ContainerVariable, TriggerConditions } from './types'
 
+/** Hosts that count as editor context — the same default as the consent module's `editorHosts`. */
+export const DEFAULT_EDITOR_HOSTS: string[] = ['*.theme.rvnxx.site']
+/** Path prefixes that count as editor/preview context — the consent module's `editorPaths` default. */
+export const DEFAULT_EDITOR_PATHS: string[] = ['/admin', '/preview']
+
+export interface EditorContextOptions {
+  /** `*.example.com` matches every subdomain, anything else the exact host. */
+  hosts: string[]
+  /** A prefix matches itself and everything below it (`/admin`, `/admin/**`). */
+  paths: string[]
+}
+
+function hostMatches(host: string, pattern: string): boolean {
+  const h = host.toLowerCase().replace(/:\d+$/, '')
+  const p = pattern.toLowerCase()
+  if (p.startsWith('*.')) return h.endsWith(p.slice(1)) && h.length > p.length - 1
+  return h === p
+}
+
 /**
  * Editor and preview contexts load no optional script (ADR-0110), in step with
- * the consent module: the theme editor host `*.theme.rvnxx.site`, and the
- * `/admin/**` and `/preview/**` paths.
+ * the consent module and matched the same way: by default the theme editor
+ * host `*.theme.rvnxx.site` and the `/admin/**` and `/preview/**` paths.
  */
-export function isEditorOrPreviewContext(host: string, path: string): boolean {
-  const h = String(host || '').toLowerCase().split(':')[0] ?? ''
-  if (h.endsWith('.theme.rvnxx.site')) return true
-  const p = String(path || '/')
-  return p === '/admin' || p.startsWith('/admin/') || p === '/preview' || p.startsWith('/preview/')
+export function isEditorOrPreviewContext(host: string, path: string, options: EditorContextOptions = { hosts: DEFAULT_EDITOR_HOSTS, paths: DEFAULT_EDITOR_PATHS }): boolean {
+  if (options.hosts.some(pattern => hostMatches(String(host || ''), pattern))) return true
+  const clean = String(path || '/').split('?')[0]!.split('#')[0]!
+  return options.paths.some(prefix => clean === prefix || clean.startsWith(`${prefix}/`))
 }
 
 /** The purpose that needs no decision. Its code is fixed vocabulary (SHARED-CONTRACT). */

@@ -67,7 +67,8 @@ export interface UpstreamRequest {
 
 /** The gateway request for the published container, or the draft when a preview token is given. */
 export function upstreamRequest(apiUrl: string, creds: DeliveryCredentials, market: string | null, previewToken: string | null): UpstreamRequest {
-  const base = String(apiUrl || 'https://api.revenexx.com').replace(/\/+$/, '')
+  // The gateway base, with or without a trailing /v1 — the path adds its own.
+  const base = String(apiUrl || 'https://api.revenexx.com').replace(/\/+$/, '').replace(/\/v1$/, '')
   const path = previewToken
     ? `/v1/tag-manager/delivery/preview/${encodeURIComponent(previewToken)}`
     : '/v1/tag-manager/delivery/container'

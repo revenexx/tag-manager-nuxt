@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isEditorOrPreviewContext } from '../src/runtime/core/context'
+import { DEFAULT_EDITOR_HOSTS, DEFAULT_EDITOR_PATHS, isEditorOrPreviewContext } from '../src/runtime/core/context'
 import { normaliseContainer, resolveDeliveryCredentials, sanitizeMarket, sanitizePreviewToken, upstreamRequest } from '../src/runtime/server/utils/delivery'
 
 describe('the container route', () => {
@@ -29,6 +29,13 @@ describe('the container route', () => {
     expect(r.headers['x-revenexx-api-key']).toBe('k')
   })
 
+  it('accepts an apiUrl with or without a trailing /v1', () => {
+    const creds = { tenant: 't', jwt: '', apiKey: 'k', source: 'config' as const }
+    for (const apiUrl of ['https://api.revenexx.com', 'https://api.revenexx.com/', 'https://api.revenexx.com/v1', 'https://api.revenexx.com/v1/']) {
+      expect(upstreamRequest(apiUrl, creds, null, null).url, apiUrl).toBe('https://api.revenexx.com/v1/tag-manager/delivery/container')
+    }
+  })
+
   it('ignores a malformed token or market instead of forwarding it', () => {
     expect(sanitizePreviewToken('short')).toBeNull()
     expect(sanitizePreviewToken('../../etc/passwd-xxxxxxxxxxxx')).toBeNull()
@@ -48,5 +55,19 @@ describe('the container route', () => {
     expect(isEditorOrPreviewContext('shop.eltric.de', '/preview/abc')).toBe(true)
     expect(isEditorOrPreviewContext('shop.eltric.de', '/administration')).toBe(false)
     expect(isEditorOrPreviewContext('shop.eltric.de', '/p/x')).toBe(false)
+  })
+
+  it('takes editor hosts and paths from the options, with the consent module\'s defaults', () => {
+    expect(DEFAULT_EDITOR_HOSTS).toEqual(['*.theme.rvnxx.site'])
+    expect(DEFAULT_EDITOR_PATHS).toEqual(['/admin', '/preview'])
+    const options = { hosts: ['cms.example.com', '*.staging.example.com'], paths: ['/cms'] }
+    expect(isEditorOrPreviewContext('cms.example.com', '/', options)).toBe(true)
+    expect(isEditorOrPreviewContext('a.staging.example.com:3000', '/', options)).toBe(true)
+    expect(isEditorOrPreviewContext('staging.example.com', '/', options)).toBe(false)
+    expect(isEditorOrPreviewContext('shop.example.com', '/cms/pages', options)).toBe(true)
+    expect(isEditorOrPreviewContext('shop.example.com', '/cmsx', options)).toBe(false)
+    // Configured lists replace the defaults, they do not add to them.
+    expect(isEditorOrPreviewContext('eltric.theme.rvnxx.site', '/admin', options)).toBe(false)
+    expect(isEditorOrPreviewContext('eltric.theme.rvnxx.site', '/', { hosts: [], paths: [] })).toBe(false)
   })
 })
