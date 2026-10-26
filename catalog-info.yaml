@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "tag-manager-nuxt"
+  description: "Nuxt module for the revenexx Tag Manager: consent-gated marketing tags on @nuxt/scripts and the storefront event contract."
+  annotations:
+    github.com/project-slug: revenexx/tag-manager-nuxt
+spec:
+  type: library
+  owner: group:default/frontend-engineering
+  system: revenue-cloud
+  lifecycle: experimental
